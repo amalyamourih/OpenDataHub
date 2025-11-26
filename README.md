@@ -6,7 +6,6 @@ TER OPENDATAHUB !
 
 
 data_pipeline/
-
 ├── README.md # Documentation du projet
 
 ├── requirements.txt # Dépendances Python
