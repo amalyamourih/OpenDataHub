@@ -1,28 +1,26 @@
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 from src.downloader import download_file
 from src.datagouv_client import get_dataset_metadata, find_resource_for_format
 from src.config import DATASET_SLUG
 
-def test_download_excel():
-    # 1️⃣ Récupérer les métadonnées du dataset
+def test_download_files():
+    # Récupérer les métadonnées du dataset
     dataset_meta = get_dataset_metadata(DATASET_SLUG)
 
-    # 2️⃣ Chercher le fichier Excel
-    resource_excel = find_resource_for_format(dataset_meta, prefer_formats=("xlsx", "xls"))
-    assert resource_excel is not None, "Aucun fichier Excel trouvé dans le dataset"
+    # Chercher les ressources 
+    list_resource = find_resource_for_format(dataset_meta)
+    assert list_resource is not None, "Aucun fichier trouvé dans le dataset"
 
-    url = resource_excel.get("url")
-    dest_path = f"data_temp/{resource_excel.get('title')}.xlsx"
+    # Télécharger le fichier
+    downloaded_path_data_temp = download_file(list_resource)
 
-    # 3️⃣ Télécharger le fichier
-    downloaded_path = download_file(url, dest_path)
+    # Vérifications
+    assert os.path.exists(downloaded_path_data_temp), "Le fichier n'a pas été téléchargé"
+    assert os.path.getsize(downloaded_path_data_temp) > 0, "Le fichier téléchargé est vide"
 
-    # 4️⃣ Vérifications
-    assert os.path.exists(downloaded_path), "Le fichier n'a pas été téléchargé"
-    assert os.path.getsize(downloaded_path) > 0, "Le fichier téléchargé est vide"
-
-    print("Test downloader Excel OK")
-    print(f"Fichier téléchargé : {downloaded_path}")
+    print("Test downloader OK")
 
 if __name__ == "__main__":
-    test_download_excel()
+    test_download_files()

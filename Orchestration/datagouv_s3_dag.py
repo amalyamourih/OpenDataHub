@@ -1,16 +1,24 @@
 import sys
 import os
-sys.path.append("/mnt/c/Users/akram/Documents/OpendataHub/src")
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+src_path = os.path.join(project_root, "src")
+
+sys.path.insert(0, project_root)
+sys.path.insert(0, src_path)
+
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from airflow.operators.empty import EmptyOperator
 
 from datetime import datetime
-from datagouv_client import get_dataset_metadata, find_resource_for_format
-from downloader import download_file
-from s3_uploader import upload_file_to_s3
-from config import S3_BUCKET, AWS_REGION, DATASET_SLUG
+from src.datagouv_client import get_dataset_metadata, find_resource_for_format
+from src.downloader import download_file
+from src.s3_uploader import upload_folder_to_s3
+from src.config import S3_BUCKET, AWS_REGION, DATASET_SLUG
+from dictionnaire_format.dictionnaire import DATA_FORMATS
 
 # Récupération des métadonnées
 def fetch_metadata(ti):
@@ -21,7 +29,7 @@ def fetch_metadata(ti):
 #Récupération des sources de données à partir des métadonnées
 def select_resource(ti):
     dataset_meta = ti.xcom_pull(key='dataset_meta', task_ids='fetch_metadata')
-    resource = find_resource_for_format(dataset_meta, prefer_formats=("xlsx","xls"))
+    resource = find_resource_for_format(dataset_meta)
     if not resource:
       raise ValueError("Aucune ressource XLS/XLSX troouvée")
     ti.xcom_push(key='resource', value=resource)
@@ -30,22 +38,14 @@ def select_resource(ti):
 #Téléchargement temporaire des sources de données dans un dossier
 def download_resource(ti):
     resource = ti.xcom_pull(key='resource',task_ids='select_ressource')
-    url = resource["url"]
     if not resource:
         raise ValueError("Resource est vide ! Vérifie le XCom de la tâche précédente")
-    file_name = resource.get("title") or os.path.basename(url)
-    local_path = f"./OpendataHub/data_temp/{file_name}"
-    download_file(url,local_path)
-    ti.xcom_push(key='local_path', value=local_path)
+    download_file(resource)
     print("Fichier téléchargé")
 
 # Stocker les sources de données dans le service S3
 def upload_to_s3(ti):
-    local_path = ti.xcom_pull(key='local_path',task_ids='download_ressource')
-    resource = ti.xcom_pull(key='resource', task_ids='select_ressource')
-    file_name = resource.get("title") or os.path.basename(resource["url"])
-    s3_key = f"xlsx_version2/{file_name}"
-    upload_file_to_s3(local_path, S3_BUCKET, s3_key ,AWS_REGION)
+    upload_folder_to_s3("data_temp", S3_BUCKET, AWS_REGION)
     print("Fichier upload sur S3")
 
 
