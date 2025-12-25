@@ -3,4 +3,5 @@ data_temp/
 .env
 env_Opendatahub/
 .git
-*/__pycache__
+__pycache__/
+*/__pycache__/
