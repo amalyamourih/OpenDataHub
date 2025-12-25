@@ -1,0 +1,30 @@
+[0m15:31:54.898655 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x0000028BEE472510>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x0000028BEF178E10>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x0000028BEC2E1810>]}
+
+
+============================== 15:31:54.912815 | cee3b34f-c5c5-43f2-abf2-63ad6958c392 ==============================
+[0m15:31:54.912815 [info ] [MainThread]: Running with dbt=1.10.15
+[0m15:31:54.914578 [debug] [MainThread]: running dbt with arguments {'partial_parse': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'send_anonymous_usage_stats': 'True', 'warn_error': 'None', 'cache_selected_only': 'False', 'target_path': 'None', 'use_colors': 'True', 'invocation_command': 'dbt init open_data_hub_sql', 'log_format': 'default', 'version_check': 'True', 'introspect': 'True', 'debug': 'False', 'printer_width': '80', 'fail_fast': 'False', 'no_print': 'None', 'quiet': 'False', 'use_experimental_parser': 'False', 'empty': 'None', 'log_cache_events': 'False', 'indirect_selection': 'eager', 'log_path': 'logs', 'profiles_dir': 'C:\\Users\\amaly\\.dbt', 'static_parser': 'True', 'write_json': 'True'}
+[0m15:31:54.993907 [info ] [MainThread]: Creating dbt configuration folder at C:\Users\amaly\.dbt
+[0m15:31:54.999495 [debug] [MainThread]: Starter project path: C:\Users\amaly\AppData\Local\Programs\Python\Python313\Lib\site-packages\dbt\include\starter_project
+[0m15:31:55.081821 [info ] [MainThread]: 
+Your new dbt project "dbt_open_data_hub_sql" was created!
+
+For more information on how to configure the profiles.yml file,
+please consult the dbt documentation here:
+
+  https://docs.getdbt.com/docs/configure-your-profile
+
+One more thing:
+
+Need help? Don't hesitate to reach out to us via GitHub issues or on Slack:
+
+  https://community.getdbt.com/
+
+Happy modeling!
+
+[0m15:31:55.083618 [info ] [MainThread]: Setting up your profile.
+[0m15:32:14.432665 [info ] [MainThread]: Profile open_data_hub_sql written to C:\Users\amaly\.dbt\profiles.yml using target's sample configuration. Once updated, you'll be able to start developing with dbt.
+[0m15:32:14.434665 [debug] [MainThread]: Command `dbt init` succeeded at 15:32:14.434486 after 19.82 seconds
+[0m15:32:14.435128 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x0000028BEF926190>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x0000028BEF98D6D0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x0000028BECF4E580>]}
+[0m15:32:14.435959 [debug] [MainThread]: Flushing usage events
+[0m15:32:15.387171 [debug] [MainThread]: An error was encountered while trying to flush usage events

@@ -1,7 +1,7 @@
 import requests
 import os
 
-
+# TODO : change this code to not load locally
 def download_file(list_resource, dest_path_data_temp=f"data_temp/"):
     for resource in list_resource:
         url = resource[1]
