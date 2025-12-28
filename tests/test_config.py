@@ -3,7 +3,7 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from config import DATA_GOUV_API_ROOT, DATASET_SLUG, AWS_REGION, S3_BUCKET 
+from ingestion_to_S3.config import DATA_GOUV_API_ROOT, DATASET_SLUG, AWS_REGION, S3_BUCKET 
 
 def test_env_variables():
     assert DATA_GOUV_API_ROOT is not None
