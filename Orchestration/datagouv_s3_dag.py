@@ -35,6 +35,7 @@ def select_resource(ti):
     ti.xcom_push(key='resource', value=resource)
     print(f"Ressource sélectionnée")
 
+# TODO : EVITER LES FICHIERS TEMPORAIRES DANS LE REPO UTILISER LA MACHINE VIRTUELLE 
 #Téléchargement temporaire des sources de données dans un dossier
 def download_resource(ti):
     resource = ti.xcom_pull(key='resource',task_ids='select_ressource')
@@ -48,6 +49,8 @@ def upload_to_s3(ti):
     upload_folder_to_s3("data_temp", S3_BUCKET, AWS_REGION)
     print("Fichier upload sur S3")
 
+
+# TODO 
 
 with DAG(
     dag_id="orchestration_ingestion",
