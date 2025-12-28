@@ -1,0 +1,11 @@
+s3:
+  prefix: tabular/
+
+duckdb:
+  database_path: warehouse/warehouse.duckdb
+
+formats:
+  - csv
+  - json
+  - parquet
+  - tsv
