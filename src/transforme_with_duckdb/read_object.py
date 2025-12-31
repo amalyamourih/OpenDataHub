@@ -1,5 +1,5 @@
 
-from src.config import S3_BUCKET
+from utils.config import S3_BUCKET
 import boto3
 # Je pense que c'est pas la peine de recuperer tout les meta donnée de file , A verifier !!!
 def read_meta_data_(path_to_key):

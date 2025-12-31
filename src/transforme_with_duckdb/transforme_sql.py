@@ -11,7 +11,7 @@ import zipfile
 import io
 import rasterio
 import duckdb
-from src.config import S3_BUCKET
+from utils.config import S3_BUCKET
 def read_tabular_data(file , file_name , extension , path_to_key):
     conx = duckdb.connect()
     # CSV 

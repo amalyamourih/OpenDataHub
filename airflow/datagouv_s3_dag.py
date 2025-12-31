@@ -14,11 +14,11 @@ from airflow.operators.python import PythonOperator
 from airflow.operators.empty import EmptyOperator
 
 from datetime import datetime
-from src.datagouv_client import get_dataset_metadata, find_resource_for_format
-from src.downloader import download_file
-from src.s3_uploader import upload_folder_to_s3
-from src.config import S3_BUCKET, AWS_REGION, DATASET_SLUG
-from dictionnaire_format.dictionnaire import DATA_FORMATS
+from ingestion.ingestion_to_S3.datagouv_client import get_dataset_metadata, find_resource_for_format
+from ingestion.ingestion_to_S3.downloader import download_file
+from ingestion.ingestion_to_S3.s3_uploader import upload_folder_to_s3
+from utils.config import S3_BUCKET, AWS_REGION, DATASET_SLUG
+from utils.dictionnaire import DATA_FORMATS
 
 # Récupération des métadonnées
 def fetch_metadata(ti):

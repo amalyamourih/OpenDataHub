@@ -1,5 +1,5 @@
 import boto3
-from src.config import  S3_BUCKET, AWS_REGION 
+from utils.config import  S3_BUCKET, AWS_REGION 
 # recuprer la liste des object dans un bucket s3
 def list_s3_objects(bucket_name):
     s3 = boto3.client('s3')

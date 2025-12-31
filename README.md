@@ -2,7 +2,8 @@
 Projet de TER de dernière année de Master SID
 TER OPENDATAHUB !
 
-# Architecture Globale du projet proposer 
+# Architecture Globale du projet proposer  (Ne pas réelle à revoir)
+ 
 
 
 data_pipeline/
@@ -148,3 +149,7 @@ data_pipeline/
 └── docs/ # Documentation
 
 ├── architecture.md└── user_guide.md
+
+# Deploiement de projet (Docker)
+
+Ou
