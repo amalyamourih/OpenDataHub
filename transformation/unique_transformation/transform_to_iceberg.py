@@ -1,11 +1,12 @@
 from pyspark.sql import SparkSession
 
+# AJUSTER les CLES
 
 spark = SparkSession.builder \
     .appName("CSV_JSON_to_Parquet") \
     .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
-    .config("spark.hadoop.fs.s3a.access.key", "AKIAXJFNVQ3W3AGXH4Z4") \
-    .config("spark.hadoop.fs.s3a.secret.key", "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") \
+    .config("spark.hadoop.fs.s3a.access.key", "acces_key") \
+    .config("spark.hadoop.fs.s3a.secret.key", "private_key") \
     .config("spark.hadoop.fs.s3a.endpoint", "s3.amazonaws.com") \
     .getOrCreate()
 
