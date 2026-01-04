@@ -4,8 +4,13 @@ import logging
 from pathlib import Path
 from pyspark.sql import SparkSession
 import pandas as pd
+import hashlib
 
-# Configuration
+# TODO1: Ajouter la gestion des fichiers compressés (.gz, .bz2, zip.)
+# TODO2: Configuration S3 pour INPUT_DIR et OUTPUT_DIR
+#TODO3: 
+
+# Configuration à changer selon S3
 INPUT_DIR = "samples_for_test/raw_data"
 OUTPUT_DIR = "samples_for_test/parquet_data"
 
@@ -15,8 +20,8 @@ logger = logging.getLogger(__name__)
 # Spark Session (local mode, single partition)
 spark = SparkSession.builder \
     .appName("Converter") \
-    .config("spark.driver.memory", "4g") \
-    .config("spark.sql.shuffle.partitions", "1") \
+    .config("spark.driver.memory", "8g") \
+    .config("spark.sql.shuffle.partitions", "3") \
     .getOrCreate()
 
 
@@ -25,38 +30,54 @@ def convert_to_parquet_pandas(filepath: str, output_path: str) -> bool:
     file_type = filepath.split('.')[-1].lower()
     
     try:
-        logger.info(f"⏳ {Path(filepath).name} ({file_type})")
+        logger.info(f"{Path(filepath).name} ({file_type})")
         
         # Lire le fichier
         if file_type == 'csv':
             df = pd.read_csv(filepath)
+            print(" L'appercu du fichier \n", df.head())
+
         
         elif file_type == 'tsv':
             df = pd.read_csv(filepath, sep='\t')
+            print(" L'appercu du fichier \n", df.head())
+
         
         elif file_type == 'json':
             df = pd.read_json(filepath)
+            print(" L'appercu du fichier \n", df.head())
+
         
         elif file_type == 'xlsx':
             df = pd.read_excel(filepath, sheet_name=0, engine='openpyxl')
+            print(" L'appercu du fichier \n", df.head())
+
         
         elif file_type == 'xls':
             df = pd.read_excel(filepath, sheet_name=0, engine='xlrd')
+            print(" L'appercu du fichier \n", df.head())
+
         
         elif file_type == 'ods':
             df = pd.read_excel(filepath, sheet_name=0, engine='odf')
+            print(" L'appercu du fichier \n", df.head())
+
         
         elif file_type == 'txt':
             # Lire comme texte brut
             with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                 lines = f.readlines()
             df = pd.DataFrame({'content': lines})
+            print(" L'appercu du fichier \n", df.head())
+
         
         elif file_type == 'sql':
             # Lire comme texte brut
             with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                 lines = f.readlines()
             df = pd.DataFrame({'statement': lines})
+            print(" L'appercu du fichier \n", df.head())
+
         
         elif file_type == 'db':
             import sqlite3
@@ -65,17 +86,22 @@ def convert_to_parquet_pandas(filepath: str, output_path: str) -> bool:
             if len(tables) > 0:
                 table = tables.iloc[0, 0]
                 df = pd.read_sql(f"SELECT * FROM {table}", conn)
+                print(" L'appercu du fichier \n", df.head())
+
             else:
                 return False
         
         elif file_type == 'parquet':
             df = pd.read_parquet(filepath)
+            print(" L'appercu du fichier \n", df.head())
+
         
         elif file_type == 'geojson':
             with open(filepath, 'r') as f:
                 data = json.load(f)
             rows = [f['properties'] for f in data.get('features', [])]
             df = pd.DataFrame(rows)
+            print(" L'appercu du fichier \n", df.head())
         
         elif file_type in ['gz', 'bz2']:
             # Fichiers compressés en tant que texte
@@ -88,12 +114,15 @@ def convert_to_parquet_pandas(filepath: str, output_path: str) -> bool:
                 with bz2.open(filepath, 'rt', encoding='utf-8', errors='ignore') as f:
                     lines = f.readlines()
             df = pd.DataFrame({'content': lines})
+            
+            print(" L'appercu du fichier \n", df.head())
         
         elif file_type == 'shp':
             import geopandas as gpd
             gdf = gpd.read_file(filepath)
             gdf['geometry'] = gdf['geometry'].astype(str)
             df = gdf
+            print(" L'appercu du fichier \n", df.head())
         
         elif file_type == 'zip':
             import zipfile
@@ -112,6 +141,58 @@ def convert_to_parquet_pandas(filepath: str, output_path: str) -> bool:
             if not rows:
                 return False
             df = pd.DataFrame(rows)
+            print(" L'appercu du fichier \n", df.head())
+        elif file_type in ['prj', 'cpg']:
+            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+            df = pd.DataFrame([{
+                'filename': Path(filepath).name,
+                'type': file_type,
+                'content': content.strip()
+            }])
+            print(" L'appercu du fichier \n", df.head())
+
+        elif file_type == 'shx':
+            with open(filepath, 'rb') as f:
+                data = f.read()
+
+            file_size = len(data)
+            md5 = hashlib.md5(data).hexdigest()
+            head = data[:256].hex()  # extrait hex (256 premiers octets)
+
+            df = pd.DataFrame([{
+                'filename': Path(filepath).name,
+                'type': 'shx',
+                'size_bytes': file_size,
+                'md5': md5,
+                'head_hex_256': head
+            }])
+
+            print(" L'appercu du fichier \n", df.head())
+
+        elif file_type == 'dbf':
+            try:
+                from dbfread import DBF
+                table = DBF(filepath, load=True, ignore_missing_memofile=True, char_decode_errors='ignore')
+                df = pd.DataFrame(iter(table))
+            except Exception:
+            # Fallback: stocker le fichier en "métadonnées" si dbfread n'est pas dispo
+                with open(filepath, 'rb') as f:
+                    data = f.read()
+                df = pd.DataFrame([{
+                    'filename': Path(filepath).name,
+                    'type': 'dbf',
+                    'size_bytes': len(data),
+                    'md5': hashlib.md5(data).hexdigest(),
+                    'head_hex_256': data[:256].hex()
+
+                }])
+
+                print(" L'appercu du fichier \n", df.head())
+    
+
+    
+    
         
         else:
             logger.error(f" Format non supporté")
@@ -144,8 +225,7 @@ def main():
     logger.info("="*60 + "\n")
     
     supported = ['csv', 'tsv', 'json', 'parquet', 'txt', 'xlsx', 'xls', 'ods',
-                 'geojson', 'sql', 'db', 'shp', 'zip', 'bz2', 'gz']
-    ignore = ['shx', 'prj', 'cpg', 'dbf']
+                 'geojson', 'sql', 'db', 'shp', 'zip', 'bz2', 'gz', 'shx', 'prj', 'cpg', 'dbf']
     
     success, failed, skipped = 0, 0, 0
     
@@ -155,11 +235,6 @@ def main():
             continue
         
         ext = filename.split('.')[-1].lower()
-        
-        if ext in ignore:
-            logger.info(f"⊘ {filename} (fichier associé)\n")
-            skipped += 1
-            continue
         
         if ext not in supported:
             logger.info(f"⊘ {filename} (format non supporté)\n")

@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from ingestion.ingestion_to_S3.datagouv_client import get_dataset_metadata, find_resource_for_format
 
 def test_dataset_metadata():
