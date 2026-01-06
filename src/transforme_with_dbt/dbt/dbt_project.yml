@@ -16,4 +16,4 @@ seed-paths: ["seeds"]
 
 models:
   opendatahub_dbt:
-    +materialized: view # Pour la creation des vues matérialiser
+    +materialized: table # Pour la creation des vues matérialiser
