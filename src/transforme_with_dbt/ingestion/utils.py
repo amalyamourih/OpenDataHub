@@ -5,7 +5,7 @@ import os
 s3_client = boto3.client('s3')
 
 # Recuperer la liste des cles des object à partir de la bucket S3
-def list_s3_keys(bucket, prefix=""):
+def list_s3_keys(bucket, prefix="parquets_files/"):
     keys = []
     paginator = s3_client.get_paginator("list_objects_v2")
 

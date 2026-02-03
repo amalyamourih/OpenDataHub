@@ -1,58 +1,373 @@
-from pyspark.sql import SparkSession
+import pandas as pd 
+import boto3
 from src.ingestion_to_S3.config import S3_BUCKET
-import pandas as pd
-import logging
-import sys 
-import os 
+import io
+import os
+import sqlite3
+import tempfile
+import geopandas as gpd
+import zipfile
+import ezdxf
 
-logging.basicConfig(level=logging.INFO, format="%(message)s")
-logger = logging.getLogger(__name__)
+def convert_csv_to_parquet(path_to_csv_key):
+    s3_client = boto3.client('s3')
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_csv_key)
+    csv_content = obj['Body'].read()
+    df = pd.read_csv(io.BytesIO(csv_content))
+    parquet_buffer = io.BytesIO()
+    df.to_parquet(parquet_buffer, index=False)
+    parquet_buffer.seek(0) 
 
-spark = SparkSession.builder \
-    .appName("Transforme to Parquet") \
-    .config(
-        "spark.jars.packages",
-        "org.apache.hadoop:hadoop-aws:3.3.4,"
-        "com.amazonaws:aws-java-sdk-bundle:1.12.262"
-    ) \
-    .config(
-        "spark.hadoop.fs.s3a.impl",
-        "org.apache.hadoop.fs.s3a.S3AFileSystem"
-    ) \
-    .config(
-        "spark.hadoop.fs.s3a.aws.credentials.provider",
-        "org.apache.hadoop.fs.s3a.AnonymousAWSCredentialsProvider"
-    ) \
-    .getOrCreate()
+    csv_filename = path_to_csv_key.split("/")[-1].replace(".csv", ".parquet")
+    parquet_key = f"parquets_files/{csv_filename}"
 
-def convert_csv_to_parquet(csv_file , parquet_file):
-    df = spark.read.csv(csv_file, header=True, inferSchema=True)
-    #df.write.parquet(parquet_file)
+    s3_client.put_object(
+        Bucket=S3_BUCKET,
+        Key=parquet_key,
+        Body=parquet_buffer.getvalue()
+    )
 
-def convert_tsv_to_parquet(tsv_file , parquet_file):
-    df = spark.read.csv(tsv_file, header=True, inferSchema=True, sep='\t')
-    #df.write.parquet(parquet_file)
+    print(f"Fichier Parquet chargé sur S3")
 
-def convert_excel_to_parquet(excel_file , parquet_file):
+def convert_tsv_to_parquet(path_to_tsv_key):
+    s3_client = boto3.client('s3')
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_tsv_key)
+    tsv_content = obj['Body'].read()
+    df = pd.read_csv(io.BytesIO(tsv_content), sep='\t')
+    parquet_buffer = io.BytesIO()
+    df.to_parquet(parquet_buffer, index=False)
+    parquet_buffer.seek(0) 
+
+    tsv_filename = path_to_tsv_key.split("/")[-1].replace(".tsv", ".parquet")
+    parquet_key = f"parquets_files/{tsv_filename}"
+
+    s3_client.put_object(
+        Bucket=S3_BUCKET,
+        Key=parquet_key,
+        Body=parquet_buffer.getvalue()
+    )
+
+    print(f"Fichier Parquet chargé sur S3") 
+
+
+def convert_db_to_parquet_all_tables(path_to_db_key):
+    s3_client = boto3.client('s3')
+
+    #Télécharger le .db
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_db_key)
+    db_content = obj['Body'].read()
+
+    #Fichier temporaire
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_db:
+        tmp_db.write(db_content)
+        tmp_db_path = tmp_db.name
+
+    try:
+        conn = sqlite3.connect(tmp_db_path)
+
+        #Récupérer les tables
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT name
+            FROM sqlite_master
+            WHERE type='table'
+              AND name NOT LIKE 'sqlite_%';
+        """)
+        tables = [row[0] for row in cursor.fetchall()]
+
+        # Convertir chaque table
+        for table in tables:
+            df = pd.read_sql(f"SELECT * FROM {table}", conn)
+
+            parquet_buffer = io.BytesIO()
+            df.to_parquet(parquet_buffer, index=False)
+            parquet_buffer.seek(0)
+
+            parquet_key = f"parquets_files/{table}.parquet"
+
+            s3_client.put_object(
+                Bucket=S3_BUCKET,
+                Key=parquet_key,
+                Body=parquet_buffer.getvalue()
+            )
+
+            print(f"Table {table} → {parquet_key}")
+
+    finally:
+        conn.close()
+        os.remove(tmp_db_path)
+
+def convert_xlsx_to_parquet(path_to_xlsx_key):
+    s3_client = boto3.client('s3')
+
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_xlsx_key)
+    xlsx_content = obj['Body'].read()
+
+    excel_file = pd.ExcelFile(io.BytesIO(xlsx_content))
+
+    for sheet_name in excel_file.sheet_names:
+        df = pd.read_excel(excel_file, sheet_name=sheet_name)
+
+        parquet_buffer = io.BytesIO()
+        df.to_parquet(parquet_buffer, index=False)
+        parquet_buffer.seek(0)
+
+        parquet_key = f"parquets_files/{sheet_name}.parquet"
+
+        s3_client.put_object(
+            Bucket=S3_BUCKET,
+            Key=parquet_key,
+            Body=parquet_buffer.getvalue()
+        )
+
+        print(f"Feuille '{sheet_name}' convertie en Parquet")
+
+def convert_xls_to_parquet(path_to_xls_key):
+    s3_client = boto3.client('s3')
+
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_xls_key)
+    xls_content = obj['Body'].read()
+
+    excel_file = pd.ExcelFile(io.BytesIO(xls_content), engine="xlrd")  # moteur pour .xls
+
+    for sheet_name in excel_file.sheet_names:
+        df = pd.read_excel(excel_file, sheet_name=sheet_name, engine="xlrd")
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = df[col].astype(str)
+
+
+        parquet_buffer = io.BytesIO()
+        df.to_parquet(parquet_buffer, index=False)
+        parquet_buffer.seek(0)
+
+        parquet_key = f"parquets_files/{sheet_name}.parquet"
+
+        s3_client.put_object(
+            Bucket=S3_BUCKET,
+            Key=parquet_key,
+            Body=parquet_buffer.getvalue()
+        )
+
+        print(f"Feuille '{sheet_name}' convertie en Parquet")
+
     
-    df = spark.read.format("com.crealytics.spark.excel") \
-        .option("header", "true") \
-        .option("inferSchema", "true") \
-        .option("dataAddress", "'Sheet1'!A1") \
-        .load(excel_file)
-    
-    #df.write.parquet(parquet_file)
+def convert_sql_to_parquet(path_to_sql_key):
+    s3_client = boto3.client('s3')
 
-def convert_parquet_to_parquet(parquet_input_file , parquet_output_file):
-    df = spark.read.parquet(parquet_input_file)
-    #df.write.parquet(parquet_output_file)       
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_sql_key)
+    sql_content = obj['Body'].read().decode("utf-8")
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_db:
+        tmp_db_path = tmp_db.name
+
+    try:
+        conn = sqlite3.connect(tmp_db_path)
+        cursor = conn.cursor()
+
+        cursor.executescript(sql_content)
+        conn.commit()
+
+        cursor.execute("""
+            SELECT name
+            FROM sqlite_master
+            WHERE type='table'
+              AND name NOT LIKE 'sqlite_%';
+        """)
+        tables = [row[0] for row in cursor.fetchall()]
+
+        for table in tables:
+            df = pd.read_sql(f"SELECT * FROM {table}", conn)
+            parquet_buffer = io.BytesIO()
+            df.to_parquet(parquet_buffer, index=False)
+            parquet_buffer.seek(0)
+
+            parquet_key = f"parquets_files/{table}.parquet"
+
+            s3_client.put_object(
+                Bucket=S3_BUCKET,
+                Key=parquet_key,
+                Body=parquet_buffer.getvalue()
+            )
+
+            print(f"Table '{table}' convertie en Parquet sur S3")
+
+    finally:
+        conn.close()
+        os.remove(tmp_db_path)
+
+
+s3_client = boto3.client('s3')
+
+def convert_txt_to_parquet(path_to_file_key):
+    s3_client = boto3.client('s3')
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_file_key)
+    content = obj['Body'].read()
+    filename = path_to_file_key.split("/")[-1]
+
+    df = pd.read_csv(io.BytesIO(content), sep=None, engine='python')
+
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].astype(str)
+
+    parquet_buffer = io.BytesIO()
+    df.to_parquet(parquet_buffer, index=False)
+    parquet_buffer.seek(0)
+
+    parquet_key = f"parquets_files/{filename.rsplit('.',1)[0]}.parquet"
+
+    s3_client.put_object(
+        Bucket=S3_BUCKET,
+        Key=parquet_key,
+        Body=parquet_buffer.getvalue()
+    )
+
+    print(f"Fichier Parquet chargé sur S3 : {parquet_key}")
+
+def convert_shp_to_parquet(path_to_shp_key):
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_shp_key)
+    content = obj['Body'].read()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        shp_path = os.path.join(tmpdir, "file.shp")
+        with open(shp_path, "wb") as f:
+            f.write(content)
+        gdf = gpd.read_file(shp_path)
+
+        parquet_buffer = io.BytesIO()
+        gdf.to_parquet(parquet_buffer, index=False)
+        parquet_buffer.seek(0)
+
+        parquet_key = f"parquets_files/{os.path.basename(path_to_shp_key).rsplit('.',1)[0]}.parquet"
+        s3_client.put_object(Bucket=S3_BUCKET, Key=parquet_key, Body=parquet_buffer.getvalue())
+
+        print(f"SHP converti : {parquet_key}")
+
+def convert_geojson_to_parquet(path_to_geojson_key):
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_geojson_key)
+    content = io.BytesIO(obj['Body'].read())
+    gdf = gpd.read_file(content)
+
+    parquet_buffer = io.BytesIO()
+    gdf.to_parquet(parquet_buffer, index=False)
+    parquet_buffer.seek(0)
+
+    parquet_key = f"parquets_files/{os.path.basename(path_to_geojson_key).rsplit('.',1)[0]}.parquet"
+    s3_client.put_object(Bucket=S3_BUCKET, Key=parquet_key, Body=parquet_buffer.getvalue())
+
+    print(f"GeoJSON converti : {parquet_key}")
+
+def convert_kml_to_parquet(path_to_kml_key):
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_kml_key)
+    content = io.BytesIO(obj['Body'].read())
+    gdf = gpd.read_file(content, driver="KML")
+
+    parquet_buffer = io.BytesIO()
+    gdf.to_parquet(parquet_buffer, index=False)
+    parquet_buffer.seek(0)
+
+    parquet_key = f"parquets_files/{os.path.basename(path_to_kml_key).rsplit('.',1)[0]}.parquet"
+    s3_client.put_object(Bucket=S3_BUCKET, Key=parquet_key, Body=parquet_buffer.getvalue())
+
+    print(f"KML converti : {parquet_key}")
+
+def convert_gpkg_to_parquet(path_to_gpkg_key):
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_gpkg_key)
+    content = io.BytesIO(obj['Body'].read())
+    with tempfile.NamedTemporaryFile(suffix=".gpkg") as tmpfile:
+        tmpfile.write(content)
+        tmpfile.flush()
+        gdf = gpd.read_file(tmpfile.name)
+
+    parquet_buffer = io.BytesIO()
+    gdf.to_parquet(parquet_buffer, index=False)
+    parquet_buffer.seek(0)
+
+    parquet_key = f"parquets_files/{os.path.basename(path_to_gpkg_key).rsplit('.',1)[0]}.parquet"
+    s3_client.put_object(Bucket=S3_BUCKET, Key=parquet_key, Body=parquet_buffer.getvalue())
+
+    print(f"GPKG converti : {parquet_key}")
+
+def convert_dwg_to_parquet(path_to_dwg_key):
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_dwg_key)
+    content = io.BytesIO(obj['Body'].read())
+    doc = ezdxf.readfile(content)
+
+    records = []
+    for e in doc.modelspace():
+        records.append(e.dxfattribs())
+    df = pd.DataFrame(records)
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].astype(str)
+
+    parquet_buffer = io.BytesIO()
+    df.to_parquet(parquet_buffer, index=False)
+    parquet_buffer.seek(0)
+
+    parquet_key = f"parquets_files/{os.path.basename(path_to_dwg_key).rsplit('.',1)[0]}.parquet"
+    s3_client.put_object(Bucket=S3_BUCKET, Key=parquet_key, Body=parquet_buffer.getvalue())
+
+    print(f"DWG converti : {parquet_key}")
+
+
+def convert_dxf_to_parquet(path_to_dxf_key):
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_dxf_key)
+    content = io.BytesIO(obj['Body'].read())
+    doc = ezdxf.readfile(content)
+    records = []
+    for e in doc.modelspace():
+        records.append(e.dxfattribs())
+    df = pd.DataFrame(records)
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].astype(str)
+
+    parquet_buffer = io.BytesIO()
+    df.to_parquet(parquet_buffer, index=False)
+    parquet_buffer.seek(0)
+
+    parquet_key = f"parquets_files/{os.path.basename(path_to_dxf_key).rsplit('.',1)[0]}.parquet"
+    s3_client.put_object(Bucket=S3_BUCKET, Key=parquet_key, Body=parquet_buffer.getvalue())
+    print(f"DXF converti : {parquet_key}")
+
+
+def convert_json_to_parquet(path_to_json_key, lines=False):
+    s3_client = boto3.client('s3')
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_json_key)
+    content = obj['Body'].read()
+    df = pd.read_json(io.BytesIO(content), lines=lines)
+
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].astype(str)
+
+    parquet_buffer = io.BytesIO()
+    df.to_parquet(parquet_buffer, index=False)
+    parquet_buffer.seek(0)
+
+    parquet_key = f"parquets_files/{path_to_json_key.split('/')[-1].rsplit('.',1)[0]}.parquet"
+    s3_client.put_object(Bucket=S3_BUCKET, Key=parquet_key, Body=parquet_buffer.getvalue())
+    print(f"JSON converti : {parquet_key}")
+
+def convert_xml_to_parquet(path_to_xml_key, xpath=".//record"):
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=path_to_xml_key)
+    content = obj['Body'].read()
+    df = pd.read_xml(io.BytesIO(content), xpath=xpath)
+
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].astype(str)
+
+    parquet_buffer = io.BytesIO()
+    df.to_parquet(parquet_buffer, index=False)
+    parquet_buffer.seek(0)
+
+    parquet_key = f"parquets_files/{path_to_xml_key.split('/')[-1].rsplit('.',1)[0]}.parquet"
+    s3_client.put_object(Bucket=S3_BUCKET, Key=parquet_key, Body=parquet_buffer.getvalue())
+    print(f"XML converti : {parquet_key}")
 
 
 
-if __name__ == "__main__":
-    path_csv_file = "tabular/csv/dim_customer.csv"
-    key = f"s3a://{S3_BUCKET}/{path_csv_file}"
-    output_parquet_file = "/tmp/dim_customer.parquet"
-    convert_csv_to_parquet(key , output_parquet_file)
-    print(f"Conversion de {key} vers terminée.")
+
 
