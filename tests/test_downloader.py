@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from ingestion.ingestion_to_S3.downloader import download_file
 from ingestion.ingestion_to_S3.datagouv_client import get_dataset_metadata, find_resource_for_format
 from utils.config import DATASET_SLUG

@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ingestion.ingestion_to_S3.s3_uploader import upload_folder_to_s3
 from utils.config import S3_BUCKET, AWS_REGION
 
