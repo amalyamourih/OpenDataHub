@@ -152,4 +152,10 @@ data_pipeline/
 
 # Deploiement de projet (Docker)
 
-Ou
+Ou 
+
+# Tester les projet 
+
+pour les tests d'uniformisation mettre la commande :
+
+ pytest "tests\testsUniformisation\test_tabular_to_parquet.py::test_convert_csv_to_parquet" -s
