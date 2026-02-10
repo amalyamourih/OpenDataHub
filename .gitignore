@@ -6,3 +6,4 @@ env_Opendatahub/
 __pycache__/
 */__pycache__/
 *.pyc
+airflow_env/
