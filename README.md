@@ -3,7 +3,8 @@ Projet de TER de dernière année de Master SID
 =======
 TER OPENDATAHUB !
 
-# Architecture Globale du projet proposer 
+# Architecture Globale du projet proposer  (Ne pas réelle à revoir)
+ 
 
 
 data_pipeline/
@@ -149,4 +150,26 @@ data_pipeline/
 └── docs/ # Documentation
 
 ├── architecture.md└── user_guide.md
->>>>>>> d2e93cb5d7085651feb009f6f7b1881b2da643d5
+
+# Deploiement de projet (Docker)
+
+Ou 
+
+# Tester les projet 
+
+pour les tests d'uniformisation mettre la commande :
+
+ pytest "tests\testsUniformisation\test_tabular_to_parquet.py::test_convert_csv_to_parquet" -s
+
+# Idée pour S3 :
+
+suivre cette structure pour les fichiers qui vont venir sur S3 :
+    s3://bucket/input_files/
+    ├── tabular/
+    ├── geospatial_vector/
+    ├── geospatial_raster/
+    ├── databases/
+    ├── archives/
+    └── others/
+
+après conversion les mettres sur cette fichier  s3://bucket/parquets_files/

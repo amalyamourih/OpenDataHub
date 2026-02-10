@@ -1,0 +1,30 @@
+version: '3.8'
+
+
+# !!!!!!!!!!!!!!!!! Juste un exemple pour comprendre la structure , à adapter !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+services:
+  etl:
+    build:
+      context: ./data_pipeline
+    container_name: opendatahub-etl
+    env_file:
+      - ./data_pipeline/.env
+    volumes:
+      - ./data_pipeline/data:/app/data
+      - ./data_pipeline/logs:/app/logs
+    command: python main.py
+    depends_on:
+      - db
+
+  db:
+    image: duckdb   # 
+    container_name: opendatahub-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: opendatahub
+    volumes:
+      - db_data:/var/lib/duckdbsql/data
+
+volumes:
+  db_data:

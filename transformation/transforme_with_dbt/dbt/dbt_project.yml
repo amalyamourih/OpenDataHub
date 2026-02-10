@@ -1,0 +1,19 @@
+name: 'opendatahub_dbt'
+version: '1.0'
+config-version: 2
+
+# Répertoire des modèles
+model-paths: ["models"]
+
+# Répertoire pour les tests DBT 
+test-paths: ["tests"]
+
+# Répertoire des snapshots 
+snapshot-paths: ["snapshots"]
+
+# Répertoire pour les seeds
+seed-paths: ["seeds"]
+
+models:
+  opendatahub_dbt:
+    +materialized: table # Pour la creation des vues matérialiser
