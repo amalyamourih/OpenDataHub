@@ -1,5 +1,5 @@
+from utils.config import S3_BUCKET
 
-from src.ingestion_to_S3.config import S3_BUCKET
 import boto3
 # Je pense que c'est pas la peine de recuperer tout les meta donnée de file , A verifier !!!
 def read_meta_data_(path_to_key):
@@ -9,3 +9,5 @@ def read_meta_data_(path_to_key):
     extension = path_to_key.split('.')[-1].lower()
     
     return file , file_name , extension, path_to_key
+
+

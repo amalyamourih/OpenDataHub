@@ -1,8 +1,11 @@
 import requests
+import sys
+import os 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from typing import Dict, Optional
-from config import DATA_GOUV_API_ROOT, DATASET_SLUG
-from dictionnaire_format.dictionnaire import DATA_FORMATS
-import os
+from utils.config import DATA_GOUV_API_ROOT, DATASET_SLUG
+from utils.dictionnaire import DATA_FORMATS
+
 from datetime import datetime
 
 def get_dataset_metadata(slug: str = DATASET_SLUG) -> Dict:

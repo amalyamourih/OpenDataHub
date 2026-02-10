@@ -9,16 +9,17 @@ sys.path.insert(0, project_root)
 sys.path.insert(0, src_path)
 
 from airflow import DAG
-from airflow.operators.bash import BashOperator
-from airflow.operators.python import PythonOperator
-from airflow.operators.empty import EmptyOperator
+from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.empty import EmptyOperator
+
 
 from datetime import datetime
-from src.datagouv_client import get_dataset_metadata, find_resource_for_format
-from src.downloader import download_file
-from src.s3_uploader import upload_folder_to_s3
-from src.config import S3_BUCKET, AWS_REGION, DATASET_SLUG
-from dictionnaire_format.dictionnaire import DATA_FORMATS
+from ingestion.ingestion_to_S3.datagouv_client import get_dataset_metadata, find_resource_for_format
+from ingestion.ingestion_to_S3.downloader import download_file
+from ingestion.ingestion_to_S3.s3_uploader import upload_folder_to_s3
+from utils.config import S3_BUCKET, AWS_REGION, DATASET_SLUG
+from utils.dictionnaire import DATA_FORMATS
 
 # Récupération des métadonnées
 def fetch_metadata(ti):
@@ -35,6 +36,7 @@ def select_resource(ti):
     ti.xcom_push(key='resource', value=resource)
     print(f"Ressource sélectionnée")
 
+# TODO : EVITER LES FICHIERS TEMPORAIRES DANS LE REPO UTILISER LA MACHINE VIRTUELLE 
 #Téléchargement temporaire des sources de données dans un dossier
 def download_resource(ti):
     resource = ti.xcom_pull(key='resource',task_ids='select_ressource')
@@ -49,9 +51,11 @@ def upload_to_s3(ti):
     print("Fichier upload sur S3")
 
 
+# TODO 
+
 with DAG(
     dag_id="orchestration_ingestion",
-    start_date=datetime(2023, 1, 1),
+    start_date=datetime(2026, 1, 1),
     schedule=None,
     catchup=False,
 ) as dag:
