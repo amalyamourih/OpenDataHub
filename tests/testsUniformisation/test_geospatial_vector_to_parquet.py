@@ -18,7 +18,7 @@ from shapely.geometry import Point, LineString, Polygon
 import ezdxf
 import pandas as pd
 from unittest.mock import patch, MagicMock
-from transformation.transforme_with_duckdb.transforme_to_parquet import (
+from transformation.transforme_with_duckdb.conversion_to_parquet import (
     convert_shp_to_parquet,
     convert_shz_to_parquet,
     convert_geojson_to_parquet,

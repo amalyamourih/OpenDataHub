@@ -12,7 +12,7 @@ import pytest
 import pandas as pd
 import io
 
-from transformation.transforme_with_duckdb.transforme_to_parquet import (
+from transformation.transforme_with_duckdb.conversion_to_parquet import (
     convert_pdf_to_parquet,
     convert_docx_to_parquet,
     convert_odt_to_parquet

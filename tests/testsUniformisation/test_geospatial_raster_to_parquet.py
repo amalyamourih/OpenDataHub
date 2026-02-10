@@ -15,7 +15,7 @@ import io
 import os
 import tempfile
 
-from transformation.transforme_with_duckdb.transforme_to_parquet import (
+from transformation.transforme_with_duckdb.conversion_to_parquet import (
     convert_tiff_to_parquet,
     convert_tif_to_parquet,
     convert_jp2_to_parquet,

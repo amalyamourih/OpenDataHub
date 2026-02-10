@@ -9,7 +9,7 @@ import io
 import tempfile
 import os
 from unittest.mock import patch, MagicMock
-from transformation.transforme_with_duckdb.transforme_to_parquet import (
+from transformation.transforme_with_duckdb.conversion_to_parquet import (
     convert_csv_to_parquet,
     convert_tsv_to_parquet,
     convert_xls_to_parquet,

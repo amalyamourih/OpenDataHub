@@ -9,3 +9,5 @@ def read_meta_data_(path_to_key):
     extension = path_to_key.split('.')[-1].lower()
     
     return file , file_name , extension, path_to_key
+
+

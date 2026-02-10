@@ -19,7 +19,7 @@ import gzip
 import lzma
 import bz2
 
-from transformation.transforme_with_duckdb.transforme_to_parquet import (
+from transformation.transforme_with_duckdb.conversion_to_parquet import (
     convert_zip_to_parquet,
     convert_tar_to_parquet,
     convert_tgz_to_parquet,

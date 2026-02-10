@@ -9,9 +9,10 @@ sys.path.insert(0, project_root)
 sys.path.insert(0, src_path)
 
 from airflow import DAG
-from airflow.operators.bash import BashOperator
-from airflow.operators.python import PythonOperator
-from airflow.operators.empty import EmptyOperator
+from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.empty import EmptyOperator
+
 
 from datetime import datetime
 from ingestion.ingestion_to_S3.datagouv_client import get_dataset_metadata, find_resource_for_format
@@ -54,7 +55,7 @@ def upload_to_s3(ti):
 
 with DAG(
     dag_id="orchestration_ingestion",
-    start_date=datetime(2023, 1, 1),
+    start_date=datetime(2026, 1, 1),
     schedule=None,
     catchup=False,
 ) as dag:

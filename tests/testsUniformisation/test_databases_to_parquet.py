@@ -10,7 +10,7 @@ import io
 import os
 import tempfile
 
-from transformation.transforme_with_duckdb.transforme_to_parquet import (
+from transformation.transforme_with_duckdb.conversion_to_parquet import (
     convert_sql_to_parquet,
     convert_db_to_parquet_all_tables
 )
