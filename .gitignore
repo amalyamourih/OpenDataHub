@@ -1,0 +1,5 @@
+# Ignorer les fichiers et dossiers temporaires ou sensibles
+data_temp/
+.env
+env_Opendatahub/
+.git
