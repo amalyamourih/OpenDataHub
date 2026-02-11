@@ -9,17 +9,16 @@ import io
 import tempfile
 import os
 from unittest.mock import patch, MagicMock
-from transformation.transforme_with_duckdb.conversion_to_parquet import (
-    convert_csv_to_parquet,
-    convert_tsv_to_parquet,
-    convert_xls_to_parquet,
-    convert_xlsx_to_parquet,
-    convert_ods_to_parquet,
-    convert_txt_to_parquet,
-    convert_dbf_to_parquet,
-    convert_parquet_to_parquet,
-    convert_pq_to_parquet
-)
+from transformation.transformat_files_to_parquet.convert_to_parquet.tabular.csv import convert_csv_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.tabular.tsv import convert_tsv_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.tabular.xls import convert_xls_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.tabular.xlsx import convert_xlsx_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.tabular.ods import convert_ods_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.tabular.txt import convert_txt_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.tabular.dbf import convert_dbf_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.tabular.parquet import convert_parquet_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.tabular.pq import convert_pq_to_parquet
+
 
 
 pytest.importorskip("dbfread")

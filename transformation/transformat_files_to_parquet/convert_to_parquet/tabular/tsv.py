@@ -1,21 +1,18 @@
 
 import io
 import pandas as pd
-from transformation.transformat_files_to_parquet.convert_to_parquet.converts.base import BaseConverter
 from ingestion.s3.io import read_s3_object, write_s3_object
 from transformation.transformat_files_to_parquet.parquet.writer import dataframe_to_parquet_bytes
+from utils.config import S3_BUCKET
 
-class TSVConverter(BaseConverter):
+def convert_tsv_to_parquet(path_to_tsv_key, S3_BUCKET=S3_BUCKET):
+    tsv_content = read_s3_object(path_to_tsv_key)
+    df = pd.read_csv(io.BytesIO(tsv_content), sep='\t')
+    parquet_buffer = dataframe_to_parquet_bytes(df)
 
-    def __init__(self, sep="\t"):
-        self.sep = sep
+    tsv_filename = path_to_tsv_key.split("/")[-1].replace(".tsv", ".parquet")
+    parquet_key = f"parquets_files/{tsv_filename}"
 
-    def convert(self, s3_key: str):
-        content = read_s3_object(s3_key)
-        df = pd.read_csv(io.BytesIO(content), sep=self.sep)
+    write_s3_object(parquet_key, parquet_buffer)
 
-        parquet_bytes = dataframe_to_parquet_bytes(df)
-        parquet_key = f"parquets_files/{s3_key.split('/')[-1].rsplit('.',1)[0]}.parquet"
-
-        write_s3_object(parquet_key, parquet_bytes)
-        print(f"TSV → Parquet : {parquet_key}")
+    print(f"Fichier Parquet chargé sur S3") 

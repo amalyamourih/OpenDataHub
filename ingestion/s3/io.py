@@ -10,3 +10,7 @@ def read_s3_object(key: str) -> bytes:
 def write_s3_object(key: str, data: bytes):
     s3 = get_s3_client()
     s3.put_object(Bucket=S3_BUCKET, Key=key, Body=data)
+
+def delete_s3_object(key: str):
+    s3 = get_s3_client()
+    s3.delete_object(Bucket=S3_BUCKET, Key=key)

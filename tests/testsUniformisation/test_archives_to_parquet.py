@@ -19,16 +19,16 @@ import gzip
 import lzma
 import bz2
 
-from transformation.transforme_with_duckdb.conversion_to_parquet import (
-    convert_zip_to_parquet,
-    convert_tar_to_parquet,
-    convert_tgz_to_parquet,
-    convert_gz_to_parquet,
-    convert_xz_to_parquet,
-    convert_bz2_to_parquet,
-    convert_7z_to_parquet,
-    convert_rar_to_parquet
-)
+
+from transformation.transformat_files_to_parquet.convert_to_parquet.archive.zip import convert_zip_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.archive.tar import convert_tar_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.archive.tgz import convert_tgz_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.archive.gz import convert_gz_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.archive.xz import convert_xz_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.archive.bz2 import convert_bz2_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.archive._7z import convert_7z_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.archive.rar import convert_rar_to_parquet
+
 
 
 def create_test_csv_content():
