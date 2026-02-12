@@ -15,12 +15,12 @@ import io
 import os
 import tempfile
 
-from transformation.transforme_with_duckdb.conversion_to_parquet import (
-    convert_tiff_to_parquet,
-    convert_tif_to_parquet,
-    convert_jp2_to_parquet,
-    convert_ecw_to_parquet
-)
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_raster.tiff import convert_tiff_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_raster.jp2 import convert_jp2_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_raster.ecw import convert_ecw_to_parquet 
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_raster.tif import convert_tif_to_parquet
+
+
 
 
 # ============================================================================

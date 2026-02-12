@@ -10,10 +10,9 @@ import io
 import os
 import tempfile
 
-from transformation.transforme_with_duckdb.conversion_to_parquet import (
-    convert_sql_to_parquet,
-    convert_db_to_parquet_all_tables
-)
+from transformation.transformat_files_to_parquet.convert_to_parquet.databases.db import  convert_db_to_parquet_all_tables
+from transformation.transformat_files_to_parquet.convert_to_parquet.databases.sql import convert_sql_to_parquet
+
 
 
 def create_test_sqlite_db(tables_data):

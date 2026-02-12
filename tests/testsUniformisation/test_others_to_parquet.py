@@ -13,10 +13,8 @@ import pandas as pd
 import io
 import json
 
-from transformation.transforme_with_duckdb.conversion_to_parquet import (
-    convert_json_to_parquet,
-    convert_xml_to_parquet
-)
+from transformation.transformat_files_to_parquet.convert_to_parquet.others.json import convert_json_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.others.xml import convert_xml_to_parquet
 
 
 def test_convert_json_to_parquet_array(mock_boto3_client):

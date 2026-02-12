@@ -1,9 +1,6 @@
-import boto3
-import os 
+from ingestion.s3.client import get_s3_client
 
-# Acceder au service S3
-s3_client = boto3.client('s3')
-
+s3_client = get_s3_client()
 # Recuperer la liste des cles des object à partir de la bucket S3
 def list_s3_keys(bucket, prefix="parquets_files/"):
     keys = []
@@ -17,9 +14,3 @@ def list_s3_keys(bucket, prefix="parquets_files/"):
                 keys.append(key)
 
     return keys
-
-# Recuperer la nom de la table a partir du clé de l'objet 
-def get_table_name_from_key(key):
-    filename = os.path.basename(key)
-    table_name = os.path.splitext(filename)[0]
-    return table_name

@@ -2,8 +2,9 @@ import duckdb
 import yaml
 import os 
 
-from utils import list_s3_keys, get_table_name_from_key
-from src.ingestion_to_S3.config import S3_BUCKET, AWS_REGION
+from s3.get_parquets_files import list_s3_keys
+from utils.get_table_name import get_table_name_from_key
+from utils.config import S3_BUCKET, AWS_REGION
 
 # Charger la configuration statique 
 with open("config.yml", "r") as f:
@@ -43,19 +44,19 @@ for key in keys:
 
     print(f"ingestion {s3_path} -- > {table_name}")
 
-    if key.endswith(".csv"):
+    if key.endswith(".parquet"):
         conx.execute(f"""
             CREATE OR REPLACE TABLE {table_name} AS
-            SELECT * FROM read_csv_auto('{s3_path}');
+            SELECT * FROM read_parquet('{s3_path}');
         """)
-
-    elif key.endswith(".tsv"):
-        conx.execute(f"""
-            CREATE OR REPLACE TABLE {table_name} AS
-            SELECT * FROM read_csv_auto('{s3_path}', delim='\\t');
-        """)
+        
 conx.close()
 print("Ingestion terminée ! ")
+
+
+
+
+
 
 
 

@@ -18,16 +18,14 @@ from shapely.geometry import Point, LineString, Polygon
 import ezdxf
 import pandas as pd
 from unittest.mock import patch, MagicMock
-from transformation.transforme_with_duckdb.conversion_to_parquet import (
-    convert_shp_to_parquet,
-    convert_shz_to_parquet,
-    convert_geojson_to_parquet,
-    convert_kml_to_parquet,
-    convert_kmz_to_parquet,
-    convert_gpkg_to_parquet,
-    convert_dwg_to_parquet,
-    convert_dxf_to_parquet
-)
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.shp import convert_shp_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.shz import convert_shz_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.geojson import convert_geojson_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.kml import convert_kml_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.kmz import convert_kmz_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.gpkg import convert_gpkg_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.dwg import convert_dwg_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.dxf import convert_dxf_to_parquet
 
 def test_convert_shp_to_parquet(sample_geodf, mock_boto3_client):
     with tempfile.TemporaryDirectory() as tmpdir:
