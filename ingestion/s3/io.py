@@ -1,6 +1,6 @@
 import io
 from utils.config import S3_BUCKET
-from client import get_s3_client
+from .client import get_s3_client
 
 def read_s3_object(key: str) -> bytes:
     s3 = get_s3_client()

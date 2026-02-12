@@ -85,7 +85,7 @@ def test_convert_tsv_to_parquet(sample_df, mock_s3_client):
         'Body': io.BytesIO(tsv_buffer.getvalue())
     }
     
-    with patch('transformation.transforme_with_duckdb.transforme_to_parquet.boto3.client') as mock_boto_client:
+    with patch('ingestion.s3.io.get_s3_client') as mock_boto_client:
         mock_boto_client.return_value = mock_s3_client
         convert_tsv_to_parquet("test_files/data.tsv")
         assert mock_s3_client.put_object.called
@@ -117,7 +117,7 @@ def test_convert_xls_to_parquet(sample_df, temp_s3_bucket_mock):
     except ImportError:
         pytest.skip("xlwt non installé")
     
-    with patch('transformation.transforme_with_duckdb.transforme_to_parquet.boto3.client') as mock_boto_client:
+    with patch('ingestion.s3.io.get_s3_client') as mock_boto_client:
         def custom_get_object(**kwargs):
             key = kwargs.get('Key', '')
             if 'data.xls' in key:
@@ -185,7 +185,7 @@ def test_convert_txt_to_parquet_space_separated(sample_df, mock_s3_client):
         'Body': io.BytesIO(txt_buffer.getvalue())
     }
     
-    with patch('transformation.transforme_with_duckdb.transforme_to_parquet.boto3.client') as mock_boto_client:
+    with patch('ingestion.s3.io.get_s3_client') as mock_boto_client:
         mock_boto_client.return_value = mock_s3_client
         convert_txt_to_parquet("test_files/data.txt")
         
@@ -207,7 +207,7 @@ def test_convert_txt_to_parquet_comma_separated(sample_df, mock_s3_client):
         'Body': io.BytesIO(txt_buffer.getvalue())
     }
     
-    with patch('transformation.transforme_with_duckdb.transforme_to_parquet.boto3.client') as mock_boto_client:
+    with patch('ingestion.s3.io.get_s3_client') as mock_boto_client:
         mock_boto_client.return_value = mock_s3_client
         convert_txt_to_parquet("test_files/data_comma.txt")
         assert mock_s3_client.put_object.called
@@ -280,7 +280,7 @@ def test_convert_parquet_to_parquet(sample_df, mock_s3_client):
     mock_s3_client.get_object.return_value = {
         'Body': io.BytesIO(parquet_buffer.getvalue())
     }
-    with patch('transformation.transforme_with_duckdb.transforme_to_parquet.boto3.client') as mock_boto_client:
+    with patch('ingestion.s3.io.get_s3_client') as mock_boto_client:
         mock_boto_client.return_value = mock_s3_client
         convert_parquet_to_parquet("test_files/data.parquet")
         assert mock_s3_client.put_object.called
@@ -296,7 +296,7 @@ def test_convert_pq_to_parquet(sample_df, mock_s3_client):
     mock_s3_client.get_object.return_value = {
         'Body': io.BytesIO(parquet_buffer.getvalue())
     }
-    with patch('transformation.transforme_with_duckdb.transforme_to_parquet.boto3.client') as mock_boto_client:
+    with patch('ingestion.s3.io.get_s3_client') as mock_boto_client:
         mock_boto_client.return_value = mock_s3_client
         convert_pq_to_parquet("test_files/data.pq")
         assert mock_s3_client.put_object.called

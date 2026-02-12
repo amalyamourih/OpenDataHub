@@ -8,6 +8,7 @@ from utils.config import S3_BUCKET
 
 def convert_sql_to_parquet(path_to_sql_key, S3_BUCKET=S3_BUCKET):
     sql_content = read_s3_object(path_to_sql_key)
+    sql_content = sql_content.decode('utf-8')
 
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_db:
         tmp_db_path = tmp_db.name

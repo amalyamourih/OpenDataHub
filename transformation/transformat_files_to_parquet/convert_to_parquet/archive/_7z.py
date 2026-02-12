@@ -3,11 +3,11 @@ import py7zr
 import tempfile
 import os
 import boto3
-from transformation.transformat_files_to_parquet.convert_to_parquet.converts.convert_by_extension import _convert_by_extension
 from utils.config import S3_BUCKET
 
 
 def convert_7z_to_parquet(path_to_7z_key, S3_BUCKET=S3_BUCKET):
+    from transformation.transformat_files_to_parquet.convert_to_parquet.converts.convert_by_extension import _convert_by_extension
     content = read_s3_object(path_to_7z_key)
     s3_client = boto3.client('s3')
     
