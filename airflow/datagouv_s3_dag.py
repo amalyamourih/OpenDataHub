@@ -9,9 +9,9 @@ sys.path.insert(0, project_root)
 sys.path.insert(0, src_path)
 
 from airflow import DAG
-from airflow.providers.standard.operators.bash import BashOperator
-from airflow.providers.standard.operators.python import PythonOperator
-from airflow.providers.standard.operators.empty import EmptyOperator
+from airflow.operators.bash import BashOperator
+from airflow.operators.python import PythonOperator
+from airflow.operators.empty import EmptyOperator
 
 
 from datetime import datetime
