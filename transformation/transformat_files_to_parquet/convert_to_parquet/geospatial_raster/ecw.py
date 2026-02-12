@@ -45,7 +45,7 @@ def convert_ecw_to_parquet(path_to_ecw_key, S3_BUCKET=S3_BUCKET):
         parquet_buffer = dataframe_to_parquet_bytes(df)
         
         parquet_key = f"parquets_files/{os.path.basename(path_to_ecw_key).rsplit('.', 1)[0]}.parquet"
-        write_s3_object(parquet_key, parquet_buffer.read())
+        write_s3_object(parquet_key, parquet_buffer)
         
         print(f"ECW converti : {parquet_key}")
         

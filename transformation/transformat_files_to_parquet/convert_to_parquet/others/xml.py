@@ -15,5 +15,5 @@ def convert_xml_to_parquet(path_to_xml_key, xpath=".//record", S3_BUCKET=S3_BUCK
     parquet_buffer = dataframe_to_parquet_bytes(df)
 
     parquet_key = f"parquets_files/{path_to_xml_key.split('/')[-1].rsplit('.',1)[0]}.parquet"
-    write_s3_object(parquet_key, parquet_buffer.read())
+    write_s3_object(parquet_key, parquet_buffer)
     print(f"XML converti : {parquet_key}")

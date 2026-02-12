@@ -1,11 +1,11 @@
 from ingestion.s3.io import read_s3_object, write_s3_object, delete_s3_object
 import gzip
 import os
-from transformation.transformat_files_to_parquet.convert_to_parquet.converts.convert_by_extension import _convert_by_extension
 from utils.config import S3_BUCKET
 
 
 def convert_gz_to_parquet(path_to_gz_key, S3_BUCKET=S3_BUCKET):
+    from transformation.transformat_files_to_parquet.convert_to_parquet.converts.convert_by_extension import _convert_by_extension
     content = read_s3_object(path_to_gz_key)
     # Décompresser
     decompressed = gzip.decompress(content)

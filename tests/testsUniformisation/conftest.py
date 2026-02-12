@@ -68,7 +68,7 @@ def sample_raster_data():
 @pytest.fixture
 def mock_s3_client():
     """Mock du client S3 - patche la variable globale s3_client"""
-    with patch('transformation.transforme_with_duckdb.transforme_to_parquet.s3_client') as mock_s3:
+    with patch('ingestion.s3.io.get_s3_client') as mock_s3:
         mock_s3.get_object.return_value = {'Body': io.BytesIO(b'')}
         mock_s3.put_object.return_value = {}
         mock_s3.delete_object.return_value = {}
@@ -82,7 +82,7 @@ def mock_s3_client():
 @pytest.fixture
 def mock_boto3_client():
     """Mock boto3.client() pour les fonctions qui créent leur propre client"""
-    with patch('transformation.transforme_with_duckdb.transforme_to_parquet.boto3.client') as mock_boto:
+    with patch('ingestion.s3.io.get_s3_client') as mock_boto:
         mock_s3 = MagicMock()
         mock_boto.return_value = mock_s3
         mock_s3.get_object.return_value = {'Body': io.BytesIO(b'')}

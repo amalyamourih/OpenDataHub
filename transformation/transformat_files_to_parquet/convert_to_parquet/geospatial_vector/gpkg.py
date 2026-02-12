@@ -18,5 +18,5 @@ def convert_gpkg_to_parquet(path_to_gpkg_key, S3_BUCKET=S3_BUCKET):
     parquet_buffer = dataframe_to_parquet_bytes(gdf)
 
     parquet_key = f"parquets_files/{os.path.basename(path_to_gpkg_key).rsplit('.', 1)[0]}.parquet"
-    write_s3_object(parquet_key, parquet_buffer.read())
+    write_s3_object(parquet_key, parquet_buffer)
     print(f"GPKG converti : {parquet_key}")
