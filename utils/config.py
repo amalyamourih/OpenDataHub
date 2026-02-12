@@ -11,3 +11,4 @@ AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 S3_iNPUT_PREFIX = os.getenv("S3_INPUT_PREFIX", "raw_files")
 S3_OUTPUT_PREFIX = os.getenv("S3_OUTPUT_PREFIX", "parquets_files")
 AWS_CONN_ID = os.getenv("AWS_CONN_ID", "aws_default")
+
