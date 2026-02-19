@@ -1,20 +1,23 @@
 from pathlib import Path
 
-# Chemins
-bronze_folder = Path("../models/bronze")
-silver_folder = Path("../models/silver")
 
-# Nom de la macro dbt
-macro_name = "auto_clean_pipeline"
+def generate_silver_models(bronze_folder_path, silver_folder_path, macro_name="auto_clean_pipeline"):
 
-for bronze_file in bronze_folder.glob("bronze_*.sql"):
-    bronze_model_name = bronze_file.stem      
-    base_name = bronze_model_name.replace("bronze_", "", 1) 
+    bronze_folder = Path(bronze_folder_path)
+    silver_folder = Path(silver_folder_path)
 
-    silver_file = silver_folder / f"silver_{base_name}.sql"
+    # Crée le dossier silver s'il n'existe pas
+    silver_folder.mkdir(parents=True, exist_ok=True)
 
-    sql_content = f"""{{{{ {macro_name}(ref('{bronze_model_name}')) }}}}
+    for bronze_file in bronze_folder.glob("bronze_*.sql"):
+        bronze_model_name = bronze_file.stem
+        base_name = bronze_model_name.replace("bronze_", "", 1)
+
+        silver_file = silver_folder / f"silver_{base_name}.sql"
+
+        sql_content = f"""{{{{ {macro_name}(ref('{bronze_model_name}')) }}}}
 """
 
-    silver_file.write_text(sql_content, encoding="utf-8")
-    print(f"✔ Generated {silver_file}")
+        silver_file.write_text(sql_content, encoding="utf-8")
+        print(f"Generated {silver_file}")
+

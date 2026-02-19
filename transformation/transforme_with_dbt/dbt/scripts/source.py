@@ -1,26 +1,34 @@
 import duckdb
 import yaml
+from pathlib import Path
 import os
 
-db_path = "../../../warehouse/warehouse.duckdb"
-# Connexion à la base Duckdb
-conx = duckdb.connect(db_path)
 
-tables = [t[0] for t in conx.execute("SHOW TABLES").fetchall()]
+def get_duckdb_connection(db_path: str):
 
-# Crée la structure YAML pour DBT 
-sources_dict = {
-    'version' : 2 ,
-    'sources' : [
-        {
-            'name': 'opendatahub' ,
-            'tables': [{'name': table} for table in tables]
-        }
-    ]
-}
+    return duckdb.connect(db_path)
 
-# Sauvgarder dans dbt/models/sources/source.yml
-with open('../models/source/source.yml', 'w') as f:
-    yaml.dump(sources_dict, f, sort_keys=False)
+def get_table_names(conx) -> list:
 
-print("sources.yml généré avec succès !")
+    return [t[0] for t in conx.execute("SHOW TABLES").fetchall()]
+
+def build_sources_dict(tables: list, source_name: str = "opendatahub") -> dict:
+ 
+    return {
+        'version': 2,
+        'sources': [
+            {
+                'name': source_name,
+                'tables': [{'name': table} for table in tables]
+            }
+        ]
+    }
+
+def save_yaml(data: dict, output_path: str):
+
+    output_file = Path(output_path)
+    output_file.parent.mkdir(parents=True, exist_ok=True)  
+    with open(output_file, 'w') as f:
+        yaml.dump(data, f, sort_keys=False)
+    print(f"{output_file} généré avec succès !")
+
