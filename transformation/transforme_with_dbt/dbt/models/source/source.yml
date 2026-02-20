@@ -2,10 +2,17 @@ version: 2
 sources:
 - name: opendatahub
   tables:
-  - name: dim_customer
-  - name: dim_date
-  - name: dim_product
-  - name: dim_store
-  - name: fact_returns
-  - name: fact_sales
+  - name: FE - FF
+  - name: FE - HF
+  - name: FE - HH
+  - name: FE - HH-FF
+  - name: FM - FF
+  - name: FM - HF
+  - name: FM - HH
+  - name: FM - HH-FF
+  - name: N_PAYSAGE_RELIEF_S_R27
+  - name: Sheet1
+  - name: cog_france_ccom
+  - name: jardins-partages
   - name: test_tsv_file
+  - name: tournee

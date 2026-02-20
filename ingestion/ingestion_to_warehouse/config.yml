@@ -1,0 +1,8 @@
+s3:
+  prefix: parquets_files/
+
+duckdb:
+  database_path: OpendataHub/warehouse/warehouse.duckdb
+
+formats:
+  - parquet

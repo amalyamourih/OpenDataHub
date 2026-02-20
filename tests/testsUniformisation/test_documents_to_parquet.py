@@ -12,11 +12,10 @@ import pytest
 import pandas as pd
 import io
 
-from transformation.transforme_with_duckdb.conversion_to_parquet import (
-    convert_pdf_to_parquet,
-    convert_docx_to_parquet,
-    convert_odt_to_parquet
-)
+from transformation.transformat_files_to_parquet.convert_to_parquet.documents.pdf import convert_pdf_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.documents.docx import convert_docx_to_parquet
+from transformation.transformat_files_to_parquet.convert_to_parquet.documents.odt import convert_odt_to_parquet
+
 
 
 def test_convert_pdf_to_parquet(mock_boto3_client):

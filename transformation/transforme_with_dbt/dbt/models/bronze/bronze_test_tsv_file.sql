@@ -1,4 +1,3 @@
--- Modèle bronze pour test_tsv_file
-                            select *
-                            from { source('opendatahub', 'test_tsv_file') };
-                        
+-- ModÃ¨le bronze pour test_tsv_file
+select *
+from {{ source('opendatahub', 'test_tsv_file') }};

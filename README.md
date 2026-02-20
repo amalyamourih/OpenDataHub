@@ -173,3 +173,40 @@ suivre cette structure pour les fichiers qui vont venir sur S3 :
     └── others/
 
 après conversion les mettres sur cette fichier  s3://bucket/parquets_files/
+
+## Deploiement d'environnement via Docker puis Airflow
+- Mettre en place cet .env 
+
+```bash
+S3_INPUT_PREFIX=
+S3_OUTPUT_PREFIX=parquets_files
+S3_BUCKET=amzn-s3-opendatahub
+AWS_REGION=eu-north-1
+AWS_DEFAULT_REGION=eu-north-1
+AWS_ACCESS_KEY_ID=ta-clé
+AWS_SECRET_ACCESS_KEY=ton-secret
+```
+- Ouvrir l'application docker
+
+- Lancer ces commande 
+
+```bash
+docker compose build --no-cache
+docker compose up -d
+```
+pour arreter de build 
+
+```bash
+docker compose down -v
+```
+
+verification de tout 
+
+```bash
+docker compose ps
+```
+
+pour Accéder à l'interface :
+
+URL : http://localhost:8080
+Login : admin / admin123!
