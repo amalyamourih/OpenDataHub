@@ -167,7 +167,7 @@ def convert_xls_to_parquet(path_to_xls_key, S3_BUCKET=S3_BUCKET):
 
         print(f"Feuille '{sheet_name}' convertie en Parquet")
 
-    
+   
 def convert_sql_to_parquet(path_to_sql_key, S3_BUCKET=S3_BUCKET):
     s3_client = boto3.client('s3')
 
