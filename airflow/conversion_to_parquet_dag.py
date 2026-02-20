@@ -4,7 +4,7 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 import json
 
@@ -61,6 +61,14 @@ from transformation.transformat_files_to_parquet.convert_to_parquet.archive._7z 
 from transformation.transformat_files_to_parquet.convert_to_parquet.archive.rar import convert_rar_to_parquet
 
 
+default_args = {
+    "owner": "airflow",
+    "retries": 3,
+    "retry_delay": timedelta(minutes=30),
+    "retry_exponential_backoff": False,
+    "email_on_failure": False,
+    "email_on_retry": False,
+}
 
 EXTENSION_MAPPING = {}
 for category, extensions in DATA_FORMATS.items():
@@ -442,6 +450,7 @@ def mark_files_as_processed(processed_lists: list[list[str]]):
 
 with DAG(
     dag_id="conversion_to_parquet_dag",
+    default_args=default_args,
     start_date=datetime(2026, 1, 1),
     schedule=None,  
     catchup=False,

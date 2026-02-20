@@ -12,7 +12,7 @@ from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from airflow.operators.empty import EmptyOperator
-
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator 
 
 from datetime import datetime
 from ingestion.ingestion_to_S3.datagouv_client import get_dataset_metadata, find_resource_for_format
@@ -21,13 +21,13 @@ from ingestion.ingestion_to_S3.s3_uploader import upload_folder_to_s3
 from utils.config import S3_BUCKET, AWS_REGION, DATASET_SLUG
 from utils.dictionnaire import DATA_FORMATS
 
-# Récupération des métadonnées
+
 def fetch_metadata(ti):
     dataset_meta = get_dataset_metadata(DATASET_SLUG)
     ti.xcom_push(key='dataset_meta',value=dataset_meta)
     print("Métadonnées récupérées")
 
-#Récupération des sources de données à partir des métadonnées
+
 def select_resource(ti):
     dataset_meta = ti.xcom_pull(key='dataset_meta', task_ids='fetch_metadata')
     resource = find_resource_for_format(dataset_meta)
@@ -36,8 +36,7 @@ def select_resource(ti):
     ti.xcom_push(key='resource', value=resource)
     print(f"Ressource sélectionnée")
 
-# TODO : EVITER LES FICHIERS TEMPORAIRES DANS LE REPO UTILISER LA MACHINE VIRTUELLE 
-#Téléchargement temporaire des sources de données dans un dossier
+
 def download_resource(ti):
     resource = ti.xcom_pull(key='resource',task_ids='select_ressource')
     if not resource:
@@ -45,19 +44,21 @@ def download_resource(ti):
     download_file(resource)
     print("Fichier téléchargé")
 
-# Stocker les sources de données dans le service S3
+
 def upload_to_s3(ti):
     upload_folder_to_s3("data_temp", S3_BUCKET, AWS_REGION)
     print("Fichier upload sur S3")
 
 
-# TODO 
+
 
 with DAG(
     dag_id="orchestration_ingestion",
     start_date=datetime(2026, 1, 1),
-    schedule=None,
+    schedule="0 9 * * *",   # ← tous les jours à 06h00 UTC
     catchup=False,
+    description="Ingestion quotidienne des données data.gouv.fr vers S3",
+    tags=["ingestion", "s3", "datagouv"],
 ) as dag:
 
     start = EmptyOperator(
@@ -84,6 +85,14 @@ with DAG(
     t4 = PythonOperator(
 	task_id="Upload_s3",
         python_callable=upload_to_s3,
+    )
+
+    trigger_conversion = TriggerDagRunOperator(
+        task_id="trigger_conversion_dag",
+        trigger_dag_id="conversion_to_parquet_dag",  # doit correspondre exactement
+        wait_for_completion=False,   # l'ingestion ne reste pas bloquée à attendre
+        reset_dag_run=True,          # force un nouveau run même si un run existe déjà
+        poke_interval=30,
     )
 
     end = EmptyOperator(

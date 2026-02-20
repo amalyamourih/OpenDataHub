@@ -2,7 +2,9 @@
 Projet de TER de dernière année de Master SID
 TER OPENDATAHUB !
 
-# Architecture Globale du projet proposer  (Ne pas réelle à revoir)
+Effectuer une platforme 
+
+# Architecture Globale du projet proposer 
  
 
 
