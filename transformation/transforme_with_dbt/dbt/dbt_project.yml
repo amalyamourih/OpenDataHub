@@ -16,4 +16,7 @@ seed-paths: ["seeds"]
 
 models:
   opendatahub_dbt:
-    +materialized: table # Pour la creation des vues matérialiser
+    bronze:
+      +schema: bronze
+    silver:
+      +schema: silver
