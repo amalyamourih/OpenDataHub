@@ -8,7 +8,6 @@ from utils.config import S3_BUCKET, AWS_REGION
 
 
 def load_config(config_path="..config.yml"):
-    """Charge la configuration YAML."""
     current_dir = os.path.dirname(__file__)  
     config_path = os.path.join(current_dir, "config.yml")
 
@@ -18,7 +17,6 @@ def load_config(config_path="..config.yml"):
 
 
 def build_db_path():
-    """Construit le chemin absolu vers le vrai warehouse.duckdb."""
     current_dir = os.path.dirname(__file__)
     project_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
     db_path = os.path.join(project_root, "warehouse", "warehouse.duckdb")
@@ -26,7 +24,6 @@ def build_db_path():
 
 
 def prepare_database_file(db_path):
-    """Supprime le fichier vide et crée le dossier si nécessaire."""
     if os.path.exists(db_path) and os.path.getsize(db_path) == 0:
         os.remove(db_path)
 
@@ -34,7 +31,6 @@ def prepare_database_file(db_path):
 
 
 def create_duckdb_connection(db_path):
-    """Crée et configure la connexion DuckDB."""
     conx = duckdb.connect(db_path)
 
     conx.execute("INSTALL httpfs;")
@@ -45,7 +41,6 @@ def create_duckdb_connection(db_path):
 
 
 def ingest_warehouse(conx, bucket, prefix, formats):
-    """Ingestion des fichiers Parquet depuis S3 vers DuckDB."""
     keys = list_s3_keys(bucket, prefix)
     print(f"{len(keys)} fichiers trouvés dans S3")
 

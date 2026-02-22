@@ -10,7 +10,7 @@ from pathlib import Path
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path: sys.path.insert(0, project_root)
-# --- Imports du projet ---
+
 from ingestion.ingestion_to_warehouse.ingestion import (
     ingest_warehouse,
     create_duckdb_connection,
@@ -20,7 +20,7 @@ from ingestion.ingestion_to_warehouse.ingestion import (
 )
 from utils.config import S3_BUCKET
 
-# --- Fonctions Airflow ---
+
 def load_config_task(ti, **kwargs):
     config = load_config()
     ti.xcom_push(key='config', value=config)

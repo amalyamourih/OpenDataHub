@@ -4,6 +4,10 @@ psycopg2-binary
 requests
 python-dotenv
 
+
+streamlit
+psycopg2-binary
+boto3
 pandas
 numpy<2
 pyarrow

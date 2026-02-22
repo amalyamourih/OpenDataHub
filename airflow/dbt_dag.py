@@ -8,12 +8,11 @@ from airflow.operators.empty import EmptyOperator
 from datetime import datetime
 from pathlib import Path
 
-# --- Configuration du project_root ---
+
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# --- Imports du projet ---
 from transformation.transforme_with_dbt.dbt.scripts.source import (
     get_duckdb_connection,
     get_table_names,
@@ -30,9 +29,7 @@ from transformation.transforme_with_dbt.dbt.scripts.generate_sql_silver import (
     generate_silver_models
 )
 
-# -------------------------------------------------------------------
-# -------------------- Fonctions Airflow -----------------------------
-# -------------------------------------------------------------------
+
 
 def generate_dbt_sources_task(ti, **kwargs):
     warehouse_path = os.path.join(project_root, "warehouse", "warehouse.duckdb")
@@ -101,10 +98,6 @@ def generate_silver_models_task(ti, **kwargs):
 
     print("Modèles Silver générés avec succès")
 
-
-# -------------------------------------------------------------------
-# ---------------------------- DAG ----------------------------------
-# -------------------------------------------------------------------
 
 with DAG(
     dag_id="transformation_dbt_orchestrated",

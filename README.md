@@ -1,157 +1,103 @@
-# OpenDataHub
-Projet de TER de dernière année de Master SID
-=======
-TER OPENDATAHUB !
+# OpenDataHub SQL (TER M2 SID 2025/26)
 
-Effectuer une platforme 
+OpenDataHub SQL is a data engineering platform built for the M2 SID TER.  
+Goal: ingest heterogeneous French open-data (data.gouv.fr), store raw files, convert them to Parquet, load them into a warehouse, and make them queryable via SQL with quality checks.
 
-# Architecture Globale du projet proposer 
- 
+Core stack:
+- Apache Airflow (Dockerized) for orchestration
+- AWS S3 as data lake storage
+- Parquet as unified analytical format
+- DuckDB as local warehouse (and optional Snowflake target)
+- dbt for SQL transformations (Bronze/Silver) and tests
 
+---
 
-data_pipeline/
+## Project Structure
 
-├── README.md # Documentation du projet
+```bash
+├── airflow/ # Airflow DAGs
 
-├── requirements.txt # Dépendances Python
+│ ├── datagouv_s3_dag.py # Ingestion (data.gouv.fr → tmp → S3)
+│ ├── conversion_to_parquet_dag.py # Conversion (S3 raw → S3 parquet)
+│ ├── conversion_parquet_to_table_dag.py
+│ └── dbt_dag.py # dbt run/test (warehouse transformations)
 
-├── .env # Variables d'environnement (DB credentials)
+├── ingestion/
+│ ├── ingestion_to_S3/ # API client + download + upload to S3
+│ ├── s3/ # S3 utilities (client, io, list keys)
+│ └── ingestion_to_warehouse/ # Parquet (S3) → DuckDB warehouse
 
-├── .gitignore # Fichiers à ignorer
+├── transformation/
+│ ├── transformat_files_to_parquet/
+│ │ ├── convert_to_parquet/ # converters by category/extension
+│ │ └── parquet/ # parquet writer utilities
+│ ├── transforme_with_duckdb/
+│ └── transforme_with_dbt/dbt/ # dbt project (models/macros/profiles)
 
-├── main.py # Point d'entrée principal
+├── utils/ # config, formats dictionary, naming helpers
 
-├── pipeline.py # Orchestrateur du pipeline ETL
+├── tests/ # unit tests + conversion tests
 
-├── config/ # Configuration globale
+└── warehouse/warehouse.duckdb # local DuckDB warehouse file
+```
 
-│ ├── init.py
 
-│ ├── settings.py # Configuration globale
+---
 
-│ ├── schemas.py # Définition des schémas de données
+## Data Lake Layout on S3
 
-│ └── database.py # Connexion aux bases de données
+The pipeline uses two prefixes:
+- `S3_INPUT_PREFIX` for raw files
+- `S3_OUTPUT_PREFIX` for parquet files
 
-├── extractors/ # Extraction (Extract)
+Recommended layout:
 
-│ ├── init.py
+s3://<bucket>/<S3_INPUT_PREFIX>/
+├── tabular/
+├── geospatial_vector/
+├── geospatial_raster/
+├── databases/
+├── archives/
+├── documents/
+└── others/
 
-│ ├── base_extractor.py # Classe abstraite de base
+s3://<bucket>/<S3_OUTPUT_PREFIX>/
+├── tabular/
+├── geospatial_vector/
+├── geospatial_raster/
+├── databases/
+├── archives/
+├── documents/
+└── others/
 
-│ ├── csv_extractor.py # Extracteur CSV
 
-│ ├── json_extractor.py # Extracteur JSON
+---
 
-│ ├── excel_extractor.py # Extracteur Excel (XLSX, XLS)
+## Requirements
 
-│ ├── xml_extractor.py # Extracteur XML
+- Docker + Docker Compose
+- AWS credentials with access to your S3 bucket
+- (Optional) Snowflake credentials if running dbt on Snowflake
 
-│ └── api_extractor.py # Extracteur API REST (bonus)
+---
 
-├── transformers/ # Transformation (Transform)
+## Environment Configuration (`.env`)
 
-│ ├── init.py
+Create a `.env` file at project root.
 
-│ ├── base_transformer.py # Classe de transformation de base
+### AWS / S3
+```bash
+S3_INPUT_PREFIX=raw_files/
+S3_OUTPUT_PREFIX=parquets_files/
+S3_BUCKET=your-bucket-name
+AWS_REGION=eu-north-1
+AWS_DEFAULT_REGION=eu-north-1
+AWS_ACCESS_KEY_ID=YOUR_KEY
+AWS_SECRET_ACCESS_KEY=YOUR_SECRET
+AWS_SESSION_TOKEN=                # optional
+AWS_CONN_ID=aws_default           # used by Airflow S3Hook (if configured)
 
-│ ├── cleaner.py # Nettoyage des données
 
-│ ├── validator.py # Validation des données
-
-│ ├── normalizer.py # Normalisation et standardisation
-
-│ ├── enricher.py # Enrichissement (calculs, ajouts)
-
-│ └── type_converter.py # Conversion de types
-
-├── loaders/ # Chargement (Load)
-
-│ ├── init.py
-
-│ ├── base_loader.py # Classe abstraite de base
-
-│ ├── database_loader.py # Chargement vers base de données
-
-│ ├── multi_table_loader.py # Chargement multi-tables
-
-│ └── s3_loader.py # Charger brute dans le service
-
-├── utils/ # Utilitaires
-
-│ ├── init.py
-
-│ ├── logger.py # Configuration des logs
-
-│ ├── file_detector.py # Détection de format et encodage
-
-│ ├── helpers.py # Fonctions utilitaires
-
-│ ├── validators.py # Validateurs réutilisables
-
-│ └── exceptions.py # Exceptions personnalisées
-
-├── data/ # Données
-
-│ ├── input/ # Fichiers sources
-
-│ │ ├── csv/
-
-│ │ ├── json/
-
-│ │ ├── excel/
-
-│ │ └── xml/
-
-│ ├── output/ # Fichiers transformés
-
-│ │ ├── csv/
-
-│ │ ├── json/
-
-│ │ └── excel/
-
-│ ├── processed/ # Fichiers déjà traités (archive)
-
-│ └── errors/ # Fichiers en erreur
-
-├── logs/ # Suivi des exécutions
-
-│ ├── etl_YYYYMMDD_HHMMSS.log
-
-│ └── error.log
-
-├── tests/ # Tests unitaires
-
-│ ├── init.py
-
-│ ├── test_extractors.py
-
-│ ├── test_transformers.py
-
-│ ├── test_loaders.py
-
-│ ├── test_pipeline.py
-
-│ └── fixtures/
-
-│ ├── sample.csv
-
-│ ├── sample.json
-
-│ └── sample.xlsx
-
-├── scripts/ # Scripts utilitaires
-
-│ ├── setup_database.py # Initialisation de la BD
-
-│ ├── migrate_data.py # Migration de données
-
-│ └── generate_report.py # Génération de rapports
-
-└── docs/ # Documentation
-
-├── architecture.md└── user_guide.md
 
 # Deploiement de projet (Docker)
 
