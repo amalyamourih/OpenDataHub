@@ -15,47 +15,90 @@ from airflow.operators.empty import EmptyOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator 
 
 from datetime import datetime
-from ingestion.ingestion_to_S3.datagouv_client import get_dataset_metadata, find_resource_for_format
+from ingestion.ingestion_to_S3.datagouv_client import get_dataset_metadata, find_resource_for_format,list_last_updated_dataset_slugs
 from ingestion.ingestion_to_S3.downloader import download_file
 from ingestion.ingestion_to_S3.s3_uploader import upload_folder_to_s3
 from utils.config import S3_BUCKET, AWS_REGION, DATASET_SLUG
 from utils.dictionnaire import DATA_FORMATS
-
+import logging
+log = logging.getLogger("airflow.task")
 
 def fetch_metadata(ti):
-    dataset_meta = get_dataset_metadata(DATASET_SLUG)
-    ti.xcom_push(key='dataset_meta',value=dataset_meta)
-    print("Métadonnées récupérées")
+    log.info("Début fetch_metadata")
+    limit = 3
+    slugs = list_last_updated_dataset_slugs(limit=limit)
+    if not slugs:
+        raise ValueError(f"Impossible de récupérer les {limit} derniers datasets mis à jour (liste vide).")
+    ti.xcom_push(key='dataset_slugs',value=slugs)
+
+    log.info("Métadonnées récupérées")
 
 
 def select_resource(ti):
-    dataset_meta = ti.xcom_pull(key='dataset_meta', task_ids='fetch_metadata')
-    resource = find_resource_for_format(dataset_meta)
-    if not resource:
-      raise ValueError("Aucune ressource XLS/XLSX troouvée")
-    ti.xcom_push(key='resource', value=resource)
-    print(f"Ressource sélectionnée")
+    slugs = ti.xcom_pull(key="dataset_slugs", task_ids="fetch_metadata")
+    if not slugs:
+        raise ValueError("XCom 'slugs' vide. Vérifie la tâche fetch_metadata.")
+
+    selected = []
+    for slug in slugs:
+        dataset_meta = get_dataset_metadata(slug)
+        resources = find_resource_for_format(dataset_meta)
+        if resources:
+            selected.append({"slug": slug, "resources": resources})
+
+    if not selected:
+        raise ValueError("Aucune ressource correspondant aux formats supportés n'a été trouvée pour les datasets récupérés.")
+    ti.xcom_push(key="selected", value=selected)
+    print(f"{len(selected)} datasets ont au moins une ressource supportée")
+
+import re
+
+def _get_tmp_path(ti) -> str:
+    """Génère un chemin tmp unique par run pour éviter les collisions."""
+    # run_id peut contenir des caractères spéciaux → on le nettoie
+    safe_run_id = re.sub(r"[^\w\-]", "_", ti.run_id)
+    return f"/tmp/data_temp/{safe_run_id}/"
 
 
 def download_resource(ti):
-    resource = ti.xcom_pull(key='resource',task_ids='select_ressource')
-    if not resource:
-        raise ValueError("Resource est vide ! Vérifie le XCom de la tâche précédente")
-    download_file(resource)
-    print("Fichier téléchargé")
+    selected = ti.xcom_pull(key="selected", task_ids="select_ressource")
+    if not selected:
+        raise ValueError("XCom 'selected' vide !")
+
+    tmp_path = _get_tmp_path(ti)   # ← chemin isolé par run
+
+    for item in selected:
+        slug      = item["slug"]
+        resources = item["resources"]
+        download_file(resources, dest_path_data_temp=f"{tmp_path}{slug}/")
+
+    ti.xcom_push(key="tmp_path", value=tmp_path)
+    print(f"Fichiers téléchargés dans : {tmp_path}")
 
 
 def upload_to_s3(ti):
-    upload_folder_to_s3("data_temp", S3_BUCKET, AWS_REGION)
-    print("Fichier upload sur S3")
+    tmp_path = ti.xcom_pull(key="tmp_path", task_ids="download_ressource")
+    if not tmp_path:
+        raise ValueError("XCom 'tmp_path' vide ! Vérifie download_ressource")
+
+    upload_folder_to_s3(tmp_path, S3_BUCKET, AWS_REGION)
+    print(f"Upload terminé depuis : {tmp_path}")
 
 
+def monitor_ingestion(ti):
+    selected = ti.xcom_pull(key="selected", task_ids="select_ressource") or []
+    nb_datasets = len(selected)
+    nb_files    = sum(len(x["resources"]) for x in selected)
 
+    log.info("Monitoring: datasets=%s files=%s", nb_datasets, nb_files)
+
+    if nb_files == 0:
+        raise ValueError("Monitoring: 0 fichier sélectionné → ingestion invalide")
 
 with DAG(
-    dag_id="orchestration_ingestion",
+    dag_id="ingestion_dag",
     start_date=datetime(2026, 1, 1),
-    schedule="0 9 * * *",   # ← tous les jours à 06h00 UTC
+    schedule="0 9 * * *",   
     catchup=False,
     description="Ingestion quotidienne des données data.gouv.fr vers S3",
     tags=["ingestion", "s3", "datagouv"],
@@ -87,11 +130,16 @@ with DAG(
         python_callable=upload_to_s3,
     )
 
+    monitor = PythonOperator(
+        task_id="monitor_ingestion",
+        python_callable=monitor_ingestion,
+    )
+    
     trigger_conversion = TriggerDagRunOperator(
         task_id="trigger_conversion_dag",
-        trigger_dag_id="conversion_to_parquet_dag",  # doit correspondre exactement
-        wait_for_completion=False,   # l'ingestion ne reste pas bloquée à attendre
-        reset_dag_run=True,          # force un nouveau run même si un run existe déjà
+        trigger_dag_id="conversion_to_parquet_dag",  
+        wait_for_completion=False,   
+        reset_dag_run=True,         
         poke_interval=30,
     )
 
@@ -100,4 +148,4 @@ with DAG(
     )
 
 
-start >> t1 >> t2 >> t3 >> t4 >> end
+start >> t1 >> t2 >> t3 >> t4 >> monitor >> trigger_conversion  >> end

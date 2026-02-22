@@ -9,3 +9,5 @@ def dataframe_to_parquet_bytes(df):
     df.to_parquet(buffer, index=False)
     buffer.seek(0)
     return buffer.getvalue()
+
+
