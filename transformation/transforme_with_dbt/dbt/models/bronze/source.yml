@@ -1,6 +1,8 @@
 version: 2
 sources:
 - name: opendatahub
+  database: OPENDATAHUBDB
+  schema: PUBLIC 
   tables:
   - name: FE - FF
   - name: FE - HF

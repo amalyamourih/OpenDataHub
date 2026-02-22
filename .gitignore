@@ -1,13 +1,18 @@
 # Ignorer les fichiers et dossiers temporaires ou sensibles
 data_temp/
-.env/
+
 */*/*/.env
+.env
+
+.env/
 .venv/
 env/
 venv/
 airflow_env/
 env_Opendatahub/
+
 .git
+
 __pycache__/
 */__pycache__/
 *.pyc

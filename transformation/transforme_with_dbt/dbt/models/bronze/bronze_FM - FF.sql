@@ -1,3 +1,3 @@
--- Modèle bronze pour FM - FF
+-- Modele bronze pour FM - FF
 select *
 from {{ source('opendatahub', 'FM - FF') }};

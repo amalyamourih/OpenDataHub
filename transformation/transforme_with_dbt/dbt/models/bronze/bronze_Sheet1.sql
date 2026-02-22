@@ -1,3 +1,3 @@
--- Modèle bronze pour Sheet1
+-- Modele bronze pour Sheet1
 select *
 from {{ source('opendatahub', 'Sheet1') }};
