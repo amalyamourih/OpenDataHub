@@ -87,7 +87,45 @@ services:
       - airflow_logs:/opt/airflow/logs
       - airflow_data_temp:/opt/airflow/data_temp
     command: airflow scheduler
+  streamlit:
+    image: ter-airflow:2.10.5
+    depends_on:
+      airflow-webserver:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /opt/airflow/project
+      # Pour accéder à Postgres Airflow depuis le conteneur
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DB: ${POSTGRES_DB:-airflow}
+      PG_USER: ${POSTGRES_USER:-airflow}
+      PG_PASSWORD: ${POSTGRES_PASSWORD:-airflow}
 
+      # S3 monitoring
+      S3_BUCKET: ${S3_BUCKET:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-eu-north-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+
+      # Prefix monitorés (tu peux les adapter)
+      S3_INPUT_PREFIX: ${S3_INPUT_PREFIX:-raw_files/}
+      S3_OUTPUT_PREFIX: ${S3_OUTPUT_PREFIX:-parquets_files/}
+    volumes:
+      - ./:/opt/airflow/project
+    ports:
+      - "8501:8501"
+    command: >
+      bash -lc "python -m streamlit run /opt/airflow/project/monitoring/app.py
+      --server.port=8501 --server.address=0.0.0.0"
+  dbt:
+    image: python:3.11-slim
+    working_dir: /project/transformation/transforme_with_dbt/dbt
+    volumes:
+      - ./:/project
+    command: bash -lc "pip install --no-cache-dir -r /project/requirements-dbt.txt && sleep infinity"
 volumes:
   airflow_logs:
   airflow_data_temp:

@@ -125,5 +125,7 @@ with DAG(
         python_callable=generate_silver_models_task
     )
 
+    
+
     # --- Chaînage ---
     start >> t1 >> t2 >> t3 >> end

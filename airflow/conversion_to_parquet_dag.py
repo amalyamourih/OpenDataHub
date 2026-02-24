@@ -59,7 +59,7 @@ from transformation.transformat_files_to_parquet.convert_to_parquet.archive.xz i
 from transformation.transformat_files_to_parquet.convert_to_parquet.archive.bz2 import convert_bz2_to_parquet
 from transformation.transformat_files_to_parquet.convert_to_parquet.archive._7z import convert_7z_to_parquet
 from transformation.transformat_files_to_parquet.convert_to_parquet.archive.rar import convert_rar_to_parquet
-
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator 
 
 default_args = {
     "owner": "airflow",
@@ -482,6 +482,15 @@ with DAG(
         other_processed
     ])
 
+    trigger_pd_tb = TriggerDagRunOperator(
+        task_id="trigger_pd_tb_dag",
+        trigger_dag_id="conversion_parquet_to_table_dag",  
+        wait_for_completion=False,   
+        reset_dag_run=True,         
+        poke_interval=30,
+    )
+
+
     end = EmptyOperator(task_id="end")
 
     start >> scanned_files >> routed
@@ -494,4 +503,4 @@ with DAG(
         archive_processed,
         doc_processed,
         other_processed
-    ] >> mark_processed >> end
+    ] >> mark_processed >> trigger_pd_tb >> end

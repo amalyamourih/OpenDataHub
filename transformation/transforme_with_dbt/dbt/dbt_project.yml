@@ -14,6 +14,8 @@ snapshot-paths: ["snapshots"]
 # Répertoire pour les seeds
 seed-paths: ["seeds"]
 
+profile: 'opendatahub_dbt'
+
 models:
   opendatahub_dbt:
     bronze:
