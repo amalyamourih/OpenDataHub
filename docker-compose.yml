@@ -118,7 +118,7 @@ services:
     ports:
       - "8501:8501"
     command: >
-      bash -lc "python -m streamlit run /opt/airflow/project/monitoring/app.py
+      bash -lc "python -m streamlit run /opt/airflow/project/monitoring/dashboard_streamlit.py
       --server.port=8501 --server.address=0.0.0.0"
   dbt:
     image: python:3.11-slim

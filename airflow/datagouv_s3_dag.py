@@ -23,6 +23,50 @@ from utils.dictionnaire import DATA_FORMATS
 import logging
 log = logging.getLogger("airflow.task")
 
+
+# --- ajoute le helper sanitize + guard ---
+import re
+from airflow.exceptions import AirflowFailException
+
+def _sanitize_run_id(s: str) -> str:
+    return re.sub(r"[^\w\-]", "_", s or "")
+
+def init_run_context(ti, **context):
+    # correlation_id = run_id du DAG ingestion (unique)
+    cid = context["dag_run"].run_id
+    ti.xcom_push(key="correlation_id", value=cid)
+    ti.xcom_push(key="parent_dag_id", value=context["dag"].dag_id)
+    ti.xcom_push(key="parent_run_id", value=context["dag_run"].run_id)
+    print(f"[chain] correlation_id={cid}")
+
+def _get_tmp_path_from_cid(correlation_id: str) -> str:
+    safe = _sanitize_run_id(correlation_id)
+    return f"/tmp/data_temp/{safe}/"
+
+def download_resource(ti, **context):
+    selected = ti.xcom_pull(key="selected", task_ids="select_ressource")
+    if not selected:
+        raise ValueError("XCom 'selected' vide !")
+
+    correlation_id = ti.xcom_pull(key="correlation_id", task_ids="init_run_context")
+    if not correlation_id:
+        raise ValueError("Missing correlation_id from init_run_context")
+
+    tmp_path = _get_tmp_path_from_cid(correlation_id)
+
+    for item in selected:
+        slug = item["slug"]
+        resources = item["resources"]
+        download_file(resources, dest_path_data_temp=f"{tmp_path}{slug}/")
+
+    ti.xcom_push(key="tmp_path", value=tmp_path)
+    print(f"[chain] tmp_path={tmp_path} correlation_id={correlation_id}")
+
+
+
+
+
+
 def fetch_metadata(ti):
     log.info("Début fetch_metadata")
     limit = 3
@@ -54,8 +98,6 @@ def select_resource(ti):
 import re
 
 def _get_tmp_path(ti) -> str:
-    """Génère un chemin tmp unique par run pour éviter les collisions."""
-    # run_id peut contenir des caractères spéciaux → on le nettoie
     safe_run_id = re.sub(r"[^\w\-]", "_", ti.run_id)
     return f"/tmp/data_temp/{safe_run_id}/"
 
@@ -108,7 +150,12 @@ with DAG(
 	task_id="start",
 
     )
-
+    
+    t0 = PythonOperator(
+    task_id="init_run_context", 
+        python_callable=init_run_context
+    )
+    
     t1 = PythonOperator(
 	task_id="fetch_metadata",
         python_callable=fetch_metadata,
@@ -137,10 +184,16 @@ with DAG(
     
     trigger_conversion = TriggerDagRunOperator(
         task_id="trigger_conversion_dag",
-        trigger_dag_id="conversion_to_parquet_dag",  
-        wait_for_completion=False,   
-        reset_dag_run=True,         
-        poke_interval=30,
+        trigger_dag_id="conversion_to_parquet_dag",
+        conf={
+            "correlation_id": "{{ ti.xcom_pull(task_ids='init_run_context', key='correlation_id') }}",
+            "parent_dag_id": "{{ dag.dag_id }}",
+            "parent_run_id": "{{ dag_run.run_id }}",
+        },
+
+        trigger_run_id="chain__{{ ti.xcom_pull(task_ids='init_run_context', key='correlation_id') }}__conversion",
+        wait_for_completion=False,
+        reset_dag_run=False, 
     )
 
     end = EmptyOperator(
@@ -148,4 +201,6 @@ with DAG(
     )
 
 
-start >> t1 >> t2 >> t3 >> t4 >> monitor >> trigger_conversion  >> end
+
+# Chaînage (exemple)
+start >> t0 >> t1 >> t2 >> t3 >> t4 >> monitor >> trigger_conversion >> end

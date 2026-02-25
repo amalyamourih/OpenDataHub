@@ -29,6 +29,22 @@ from transformation.transforme_with_dbt.dbt.scripts.generate_sql_silver import (
     generate_silver_models
 )
 
+from airflow.operators.python import PythonOperator
+from airflow.exceptions import AirflowFailException
+
+def require_correlation_id_task(ti, **context):
+    conf = (context["dag_run"].conf or {})
+    cid = conf.get("correlation_id")
+    if not cid:
+        raise AirflowFailException("Missing correlation_id in dag_run.conf")
+    ti.xcom_push(key="correlation_id", value=cid)
+    print(f"[chain] correlation_id={cid}")
+
+guard = PythonOperator(
+    task_id="guard_correlation",
+    python_callable=require_correlation_id_task,
+)
+
 
 
 def generate_dbt_sources_task(ti, **kwargs):
@@ -102,7 +118,7 @@ def generate_silver_models_task(ti, **kwargs):
 with DAG(
     dag_id="transformation_dbt_orchestrated",
     start_date=datetime(2026, 2, 13),
-    schedule="@daily",
+    schedule=None,
     catchup=False,
     tags=["dbt", "transformation", "warehouse"],
 ) as dag:
@@ -127,5 +143,4 @@ with DAG(
 
     
 
-    # --- Chaînage ---
-    start >> t1 >> t2 >> t3 >> end
+    start >> guard >> t1 >> t2 >> t3 >> end

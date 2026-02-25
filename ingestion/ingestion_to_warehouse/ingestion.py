@@ -1,114 +1,83 @@
-import yaml
 import os
-import snowflake.connector
-import sys
+from typing import Iterable, List, Optional
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+import snowflake.connector
 
 from ingestion.s3.get_parquets_files import list_s3_keys
 from utils.get_table_name import get_table_name_from_key
-from utils.config import S3_BUCKET, AWS_REGION
-
-
-def load_config(config_path="..config.yml"):
-    current_dir = os.path.dirname(__file__)  
-    config_path = os.path.join(current_dir, "config.yml")
-
-    with open(config_path, "r") as f:
-        return yaml.safe_load(f)
-
-
-def build_db_path():
-    current_dir = os.path.dirname(__file__)
-    project_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
-    db_path = os.path.join(project_root, "warehouse", "warehouse.duckdb")
-    return db_path
-
-
-def prepare_database_file(db_path):
-    if os.path.exists(db_path) and os.path.getsize(db_path) == 0:
-        os.remove(db_path)
-
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+from utils.config import S3_BUCKET
 
 
 def create_snowflake_connection():
     return snowflake.connector.connect(
-        user=os.getenv('SNOWFLAKE_USER'),
-        password=os.getenv('SNOWFLAKE_PASSWORD'),
-        account=os.getenv('SNOWFLAKE_ACCOUNT'),
-        warehouse=os.getenv('SNOWFLAKE_WAREHOUSE'),
-        database=os.getenv('SNOWFLAKE_DATABASE'),
-        schema='PUBLIC' # Ou ton schéma RAW
+        user=os.getenv("SNOWFLAKE_USER"),
+        password=os.getenv("SNOWFLAKE_PASSWORD"),
+        account=os.getenv("SNOWFLAKE_ACCOUNT"),
+        warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
+        database=os.getenv("SNOWFLAKE_DATABASE"),
+        schema=os.getenv("SNOWFLAKE_SCHEMA", "PUBLIC"),
+        role=os.getenv("SNOWFLAKE_ROLE", None),
     )
 
 
-def ingest_warehouse(conx, bucket, prefix, formats):
-    """Ingestion des fichiers Parquet depuis S3 vers DuckDB."""
-    keys = list_s3_keys(bucket, prefix)
+def load_parquets_to_snowflake(
+    conx,
+    prefix: str = "parquets_files/",
+    stage_name: str = "MY_S3_STAGE",
+    file_format: str = "MY_PARQUET_FORMAT",
+    formats: Iterable[str] = (".parquet",),
+) -> List[str]:
+    cursor = conx.cursor()
+    created_tables: List[str] = []
 
-    for key in keys:
-        if not key.endswith(formats):
-            continue
+    try:
+        keys = list_s3_keys(S3_BUCKET, prefix=prefix)
+        suffixes = tuple(s.lower() for s in formats)
 
-        table_name = get_table_name_from_key(key).upper()
-        # On utilise le nom du STAGE au lieu de l'URL S3 directe
-        stage_path = f"@MY_S3_STAGE/{key}" 
+        parquet_keys = [k for k in keys if k.lower().endswith(suffixes)]
+        print(f"{len(parquet_keys)} fichiers trouvés sous s3://{S3_BUCKET}/{prefix}")
 
-        try:
-            print(f"🚀 Ingestion Snowflake via Stage: {stage_path} --> {table_name}")
+        for key in parquet_keys:
+            table_name = get_table_name_from_key(key).upper()
+            stage_path = f"@{stage_name}/{key}"
 
-            # 1. Inférence de schéma via le Stage
-            cursor.execute(f"""
-                CREATE OR REPLACE TABLE "{table_name}" 
-                USING TEMPLATE (
-                    SELECT ARRAY_AGG(OBJECT_CONSTRUCT(*)) 
-                    FROM TABLE(INFER_SCHEMA(LOCATION=>'{stage_path}', FILE_FORMAT=>'MY_PARQUET_FORMAT'))
+            try:
+                print(f"{stage_path} -> {table_name}")
+
+                cursor.execute(
+                    f"""
+                    CREATE OR REPLACE TABLE "{table_name}"
+                    USING TEMPLATE (
+                        SELECT ARRAY_AGG(OBJECT_CONSTRUCT(*))
+                        FROM TABLE(
+                            INFER_SCHEMA(
+                                LOCATION => '{stage_path}',
+                                FILE_FORMAT => '{file_format}'
+                            )
+                        )
+                    );
+                    """
                 )
-            """)
 
-            # 2. Chargement via le Stage (plus besoin de credentials ici, ils sont dans le stage)
-            cursor.execute(f"""
-                COPY INTO "{table_name}"
-                FROM '{stage_path}'
-                FILE_FORMAT = (TYPE = PARQUET)
-                MATCH_BY_COLUMN_NAME = CASE_SENSITIVE;
-            """)
-            print(f"✅ Succès pour {table_name}")
+                cursor.execute(
+                    f"""
+                    COPY INTO "{table_name}"
+                    FROM '{stage_path}'
+                    FILE_FORMAT = (FORMAT_NAME = '{file_format}')
+                    MATCH_BY_COLUMN_NAME = CASE_SENSITIVE;
+                    """
+                )
 
-        except Exception as e:
-            print(f"❌ Erreur sur {table_name} : {str(e)}")
-    
-    cursor.close()
+                print(f"OK: {table_name}")
+                created_tables.append(table_name)
 
+            except Exception as e:
+                print(f"Erreur sur {key} -> {table_name}: {e}")
 
-# def create_duckdb_connection(db_path):
-#     """Crée et configure la connexion DuckDB."""
-#     conx = duckdb.connect(db_path)
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
 
-#     conx.execute("INSTALL httpfs;")
-#     conx.execute("LOAD httpfs;")
-#     conx.execute(f"SET s3_region='{AWS_REGION}';")
-
-#     return conx
-
-
-# def ingest_warehouse(conx, bucket, prefix, formats):
-#     """Ingestion des fichiers Parquet depuis S3 vers DuckDB."""
-#     keys = list_s3_keys(bucket, prefix)
-#     print(f"{len(keys)} fichiers trouvés dans S3")
-
-#     for key in keys:
-#         if not key.endswith(formats):
-#             continue
-
-#         table_name = get_table_name_from_key(key)
-#         s3_path = f"s3://{bucket}/{key}"
-
-#         print(f"Ingestion {s3_path} --> {table_name}")
-
-#         if key.endswith(".parquet"):
-#             conx.execute(f"""
-#                 CREATE OR REPLACE TABLE "{table_name}" AS
-#                 SELECT * FROM read_parquet('{s3_path}');
-#             """)
+    return created_tables

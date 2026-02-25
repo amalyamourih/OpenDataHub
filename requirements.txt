@@ -4,7 +4,6 @@ psycopg2-binary
 requests
 python-dotenv
 
-# monitoring (optional)
 streamlit
 boto3
 pandas
@@ -12,6 +11,7 @@ pandas
 numpy<2
 pyarrow
 fastparquet
+snowflake-connector-python==3.13.2
 
 openpyxl
 pyxlsb

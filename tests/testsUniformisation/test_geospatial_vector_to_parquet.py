@@ -18,6 +18,9 @@ from shapely.geometry import Point, LineString, Polygon
 import ezdxf
 import pandas as pd
 from unittest.mock import patch, MagicMock
+
+
+from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector import shp as shp_mod
 from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.shp import convert_shp_to_parquet
 from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.shz import convert_shz_to_parquet
 from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.geojson import convert_geojson_to_parquet
@@ -27,75 +30,91 @@ from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_v
 from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.dwg import convert_dwg_to_parquet
 from transformation.transformat_files_to_parquet.convert_to_parquet.geospatial_vector.dxf import convert_dxf_to_parquet
 
-def test_convert_shp_to_parquet(sample_geodf, mock_boto3_client):
+
+def test_convert_shp_to_parquet(sample_geodf, monkeypatch):
+    mock_s3 = MagicMock()
+
+
     with tempfile.TemporaryDirectory() as tmpdir:
         shp_path = os.path.join(tmpdir, "data.shp")
         sample_geodf.to_file(shp_path)
-        
+
         shp_files = {}
         base_name = os.path.splitext(shp_path)[0]
-        for ext in ['.shp', '.shx', '.dbf', '.prj', '.cpg']:
-            file_path = base_name + ext
-            if os.path.exists(file_path):
-                with open(file_path, 'rb') as f:
+        for ext in [".shp", ".shx", ".dbf", ".prj", ".cpg"]:
+            fp = base_name + ext
+            if os.path.exists(fp):
+                with open(fp, "rb") as f:
                     shp_files[ext] = f.read()
-    
-    def mock_get_object(**kwargs):
-        key = kwargs.get('Key', '')
-        for ext, data in shp_files.items():
-            if key.endswith(ext):
-                return {'Body': io.BytesIO(data)}
-        raise Exception("NoSuchKey")
-    
-    mock_boto3_client.get_object.side_effect = mock_get_object
-    convert_shp_to_parquet("test_files/data.shp")
-    assert mock_boto3_client.put_object.called
-    put_call = mock_boto3_client.put_object.call_args
-    parquet_data = put_call[1]['Body']
-    gdf_result = gpd.read_parquet(io.BytesIO(parquet_data))
-    print(gdf_result.head())
-    assert len(gdf_result) == 3
-    assert 'geometry' in gdf_result.columns
-  
 
-def test_convert_shp_to_parquet_polygons(mock_boto3_client):
-    gdf = gpd.GeoDataFrame({
-        'id': [1, 2],
-        'name': ['Zone A', 'Zone B'],
-        'geometry': [
-            Polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
-            Polygon([(2, 2), (3, 2), (3, 3), (2, 3)])
-        ]
-    }, crs='EPSG:4326')
-    
+    def mock_get_object(Bucket, Key):
+        for ext, data in shp_files.items():
+            if Key.endswith(ext):
+                return {"Body": io.BytesIO(data)}
+
+        raise mock_s3.exceptions.NoSuchKey({}, "GetObject")
+
+    mock_s3.exceptions.NoSuchKey = type("NoSuchKey", (Exception,), {})
+    mock_s3.get_object.side_effect = mock_get_object
+    monkeypatch.setattr(shp_mod.boto3, "client", lambda *a, **k: mock_s3)
+
+    convert_shp_to_parquet("test_files/data.shp")
+
+    assert mock_s3.put_object.called
+
+    # optional: validate parquet content
+    put_kwargs = mock_s3.put_object.call_args.kwargs
+    parquet_bytes = put_kwargs["Body"]
+    gdf_out = gpd.read_parquet(io.BytesIO(parquet_bytes))
+    assert len(gdf_out) == len(sample_geodf)
+    assert "geometry" in gdf_out.columns
+
+
+
+def test_convert_shp_to_parquet_polygons(monkeypatch):
+    mock_s3 = MagicMock()
+    mock_s3.exceptions.NoSuchKey = type("NoSuchKey", (Exception,), {})
+
+    gdf = gpd.GeoDataFrame(
+        {
+            "id": [1, 2],
+            "name": ["Zone A", "Zone B"],
+            "geometry": [
+                Polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
+                Polygon([(2, 2), (3, 2), (3, 3), (2, 3)]),
+            ],
+        },
+        crs="EPSG:4326",
+    )
+
     with tempfile.TemporaryDirectory() as tmpdir:
         shp_path = os.path.join(tmpdir, "polygons.shp")
         gdf.to_file(shp_path)
-        
+
         shp_files = {}
         base_name = os.path.splitext(shp_path)[0]
-        for ext in ['.shp', '.shx', '.dbf', '.prj', '.cpg']:
-            file_path = base_name + ext
-            if os.path.exists(file_path):
-                with open(file_path, 'rb') as f:
+        for ext in [".shp", ".shx", ".dbf", ".prj", ".cpg"]:
+            fp = base_name + ext
+            if os.path.exists(fp):
+                with open(fp, "rb") as f:
                     shp_files[ext] = f.read()
-    
-    def mock_get_object(**kwargs):
-        key = kwargs.get('Key', '')
+
+    def mock_get_object(Bucket, Key):
         for ext, data in shp_files.items():
-            if key.endswith(ext):
-                return {'Body': io.BytesIO(data)}
-        raise Exception("NoSuchKey")
-    
-    mock_boto3_client.get_object.side_effect = mock_get_object
+            if Key.endswith(ext):
+                return {"Body": io.BytesIO(data)}
+        raise mock_s3.exceptions.NoSuchKey({}, "GetObject")
+
+    mock_s3.get_object.side_effect = mock_get_object
+    monkeypatch.setattr(shp_mod.boto3, "client", lambda *a, **k: mock_s3)
+
     convert_shp_to_parquet("test_files/polygons.shp")
-    assert mock_boto3_client.put_object.called
-    put_call = mock_boto3_client.put_object.call_args
-    parquet_data = put_call[1]['Body']
-    gdf_result = gpd.read_parquet(io.BytesIO(parquet_data))
-    print(gdf_result.head())
-    assert len(gdf_result) == 2
-    assert 'geometry' in gdf_result.columns
+
+    assert mock_s3.put_object.called
+    parquet_bytes = mock_s3.put_object.call_args.kwargs["Body"]
+    gdf_out = gpd.read_parquet(io.BytesIO(parquet_bytes))
+    assert len(gdf_out) == 2
+    assert "geometry" in gdf_out.columns
 
 
 def test_convert_shz_to_parquet(sample_geodf, mock_boto3_client):

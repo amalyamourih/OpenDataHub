@@ -11,9 +11,6 @@ import psycopg2
 st.set_page_config(page_title="OpenDataHub SQL – Monitoring", layout="wide")
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ──────────────────────────────────────────────────────────────────────────────
 
 def env(name: str, default: Optional[str] = None) -> str:
     v = os.getenv(name, default)
@@ -166,7 +163,7 @@ with st.sidebar:
     st.subheader("S3")
     s3_bucket = st.text_input("S3_BUCKET", value=env("S3_BUCKET", ""))
     s3_region = st.text_input("AWS_REGION", value=env("AWS_DEFAULT_REGION", env("AWS_REGION", "eu-north-1")))
-    raw_prefix = st.text_input("Préfixe RAW (input)", value=env("S3_INPUT_PREFIX", "raw_files/"))
+    raw_prefix = st.text_input("Fichiers Raw (mettre préfixe de format)")
     parquet_prefix = st.text_input("Préfixe Parquet (output)", value=env("S3_OUTPUT_PREFIX", "parquets_files/"))
 
     st.subheader("Airflow DB (Postgres)")
@@ -208,20 +205,17 @@ with top_left:
             raw_files, raw_bytes, raw_last = kpis_from_s3(raw_df)
             pq_files, pq_bytes, pq_last = kpis_from_s3(pq_df)
 
-            c1, c2, c3, c4, c5, c6 = st.columns(6)
+            c1, c2 = st.columns(2)
             c1.metric("RAW files", raw_files)
             c2.metric("RAW size", bytes_to_human(raw_bytes))
-            c3.metric("RAW latest", str(raw_last) if raw_last else "—")
+            c3 = st.columns(1)[0]
+            c3.metric("RAW latest", str(raw_last)[:-6]  if raw_last else "—")
+            c4, c5 = st.columns(2)
             c4.metric("Parquet files", pq_files)
             c5.metric("Parquet size", bytes_to_human(pq_bytes))
-            c6.metric("Parquet latest", str(pq_last) if pq_last else "—")
+            c6 = st.columns(1)[0]
+            c6.metric("Parquet latest", str(pq_last)[:-6] if pq_last else "—")
 
-            st.caption("Répartition approximative des Parquets par sous-dossier (si présent).")
-            breakdown = s3_breakdown_top_folder(pq_df, parquet_prefix)
-            if breakdown.empty:
-                st.info("Aucun fichier parquet trouvé (ou pas de structure de dossiers).")
-            else:
-                st.dataframe(breakdown, use_container_width=True, hide_index=True)
 
         except Exception as e:
             st.error(f"Erreur S3: {e}")
@@ -262,18 +256,12 @@ with top_right:
         st3, rid3 = airflow_last_state(runs, dag_load_snowflake)
         st4, rid4 = airflow_last_state(runs, dag_dbt)
 
-        a1, a2 = st.columns(2)
-        with a1:
-            st.write(f"**{dag_ingestion}** → `{st1}`")
-            st.caption(f"run_id: {rid1}")
-            st.write(f"**{dag_convert}** → `{st2}`")
-            st.caption(f"run_id: {rid2}")
-        with a2:
-            st.write(f"**{dag_load_snowflake}** → `{st3}`")
-            st.caption(f"run_id: {rid3}")
-            st.write(f"**{dag_dbt}** → `{st4}`")
-            st.caption(f"run_id: {rid4}")
-
+        a1, a2, a3, a4 = st.columns(4)
+        a1 = st.write(f"**{dag_ingestion}** → `{st1}`")
+        a2 =st.write(f"**{dag_convert}** → `{st2}`")
+        a3 = st.write(f"**{dag_load_snowflake}** → `{st3}`")
+        a4 =st.write(f"**{dag_dbt}** → `{st4}`")
+            
         # Heuristiques simples “health”
         st.divider()
         warnings = []
@@ -299,13 +287,13 @@ with top_right:
             for w in warnings:
                 st.warning(w)
         else:
-            st.success("Aucune alerte majeure détectée (monitoring heuristique).")
+            st.success("Aucune alerte majeure détectée.")
 
     except Exception as e:
         st.error(f"Erreur Airflow DB: {e}")
 
 with bottom_right:
-    st.subheader("Airflow – Derniers DAG runs (filtrable)")
+    st.subheader("Airflow – Derniers DAG runs")
 
     try:
         conn = get_pg_conn(pg_host, pg_port, pg_db, pg_user, pg_pwd)

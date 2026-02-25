@@ -1,6 +1,8 @@
 import os
 import sys
 
+
+
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
@@ -11,6 +13,8 @@ import json
 from airflow import DAG
 from airflow.decorators import task
 from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import PythonOperator
+from airflow.exceptions import AirflowFailException
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.models import Variable
 from utils.config import S3_BUCKET, S3_iNPUT_PREFIX, S3_OUTPUT_PREFIX, AWS_CONN_ID
@@ -60,6 +64,20 @@ from transformation.transformat_files_to_parquet.convert_to_parquet.archive.bz2 
 from transformation.transformat_files_to_parquet.convert_to_parquet.archive._7z import convert_7z_to_parquet
 from transformation.transformat_files_to_parquet.convert_to_parquet.archive.rar import convert_rar_to_parquet
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator 
+
+import re
+
+def _sanitize_run_id(s: str) -> str:
+    return re.sub(r"[^\w\-]", "_", s or "")
+
+def require_correlation_id_task(ti, **context):
+    conf = (context["dag_run"].conf or {})
+    cid = conf.get("correlation_id")
+    if not cid:
+        raise AirflowFailException("Missing correlation_id in dag_run.conf")
+    ti.xcom_push(key="correlation_id", value=cid)
+    print(f"[chain] correlation_id={cid}")
+
 
 default_args = {
     "owner": "airflow",
@@ -460,6 +478,11 @@ with DAG(
 
     start = EmptyOperator(task_id="start")
 
+    guard = PythonOperator(
+        task_id="guard_correlation",
+        python_callable=require_correlation_id_task,
+    )
+
     scanned_files = scan_s3_folders()
     routed = route_files(scanned_files)
 
@@ -483,17 +506,23 @@ with DAG(
     ])
 
     trigger_pd_tb = TriggerDagRunOperator(
-        task_id="trigger_pd_tb_dag",
-        trigger_dag_id="conversion_parquet_to_table_dag",  
-        wait_for_completion=False,   
-        reset_dag_run=True,         
-        poke_interval=30,
+    task_id="trigger_pd_tb_dag",
+    trigger_dag_id="conversion_parquet_to_table_dag",
+    conf={
+        "correlation_id": "{{ ti.xcom_pull(task_ids='guard_correlation', key='correlation_id') }}",
+        "parent_dag_id": "{{ dag.dag_id }}",
+        "parent_run_id": "{{ dag_run.run_id }}",
+    },
+    trigger_run_id="chain__{{ ti.xcom_pull(task_ids='guard_correlation', key='correlation_id') }}__snowflake",
+    wait_for_completion=False,
+    reset_dag_run=False,
     )
+
 
 
     end = EmptyOperator(task_id="end")
 
-    start >> scanned_files >> routed
+    start >> guard >> scanned_files >> routed
 
     routed >> [
         tabular_processed,
