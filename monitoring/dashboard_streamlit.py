@@ -151,6 +151,102 @@ def airflow_state_counts(runs_df: pd.DataFrame) -> Tuple[int, int, int]:
     return ok, failed, running
 
 
+def airflow_task_durations(conn, dag_id: str, run_id: str) -> pd.DataFrame:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT task_id, state, start_date, end_date
+            FROM task_instance
+            WHERE dag_id = %s AND run_id = %s
+            ORDER BY start_date ASC NULLS LAST
+            """,
+            (dag_id, run_id),
+        )
+        rows = cur.fetchall()
+
+    df = pd.DataFrame(rows, columns=["task_id", "state", "start_date", "end_date"])
+    if not df.empty:
+        df["duration_s"] = (df["end_date"] - df["start_date"]).dt.total_seconds()
+    return df
+
+
+def airflow_run_durations_by_dag(conn, dag_id: str, limit: int = 50) -> pd.DataFrame:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT run_id, state, start_date, end_date
+            FROM dag_run
+            WHERE dag_id = %s
+            ORDER BY start_date DESC NULLS LAST
+            LIMIT %s
+            """,
+            (dag_id, limit),
+        )
+        rows = cur.fetchall()
+
+    df = pd.DataFrame(rows, columns=["run_id", "state", "start_date", "end_date"])
+    if not df.empty:
+        df["duration_s"] = (df["end_date"] - df["start_date"]).dt.total_seconds()
+    return df
+
+from pathlib import Path
+
+def tail_text_file(path: str, n: int = 200) -> str:
+    try:
+        p = Path(path)
+        if not p.exists():
+            return f"[missing] {path}"
+        lines = p.read_text(encoding="utf-8", errors="ignore").splitlines()
+        return "\n".join(lines[-n:])
+    except Exception as e:
+        return f"[error reading {path}] {e}"
+
+
+def list_files_info(folder: str, glob_pattern: str = "*.sql") -> pd.DataFrame:
+    p = Path(folder)
+    if not p.exists():
+        return pd.DataFrame(columns=["file", "mtime"])
+    rows = []
+    for f in p.glob(glob_pattern):
+        rows.append({"file": str(f.name), "mtime": datetime.fromtimestamp(f.stat().st_mtime)})
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        df = df.sort_values("mtime", ascending=False)
+    return df
+
+
+def snowflake_probe_tables() -> pd.DataFrame:
+    try:
+        import snowflake.connector  # lazy import
+    except Exception as e:
+        raise RuntimeError(f"snowflake connector not available: {e}")
+
+    conx = snowflake.connector.connect(
+        user=os.getenv("SNOWFLAKE_USER"),
+        password=os.getenv("SNOWFLAKE_PASSWORD"),
+        account=os.getenv("SNOWFLAKE_ACCOUNT"),
+        warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
+        database=os.getenv("SNOWFLAKE_DATABASE"),
+        schema=os.getenv("SNOWFLAKE_SCHEMA", "PUBLIC"),
+        role=os.getenv("SNOWFLAKE_ROLE", None),
+    )
+
+    try:
+        with conx.cursor() as cur:
+            cur.execute(
+                """
+                SELECT table_name, row_count, bytes, created, last_altered
+                FROM information_schema.tables
+                WHERE table_schema = CURRENT_SCHEMA()
+                ORDER BY last_altered DESC
+                LIMIT 50
+                """
+            )
+            rows = cur.fetchall()
+        return pd.DataFrame(rows, columns=["table_name", "row_count", "bytes", "created", "last_altered"])
+    finally:
+        conx.close()    
+
 # ──────────────────────────────────────────────────────────────────────────────
 # UI
 # ──────────────────────────────────────────────────────────────────────────────
@@ -323,11 +419,81 @@ with bottom_right:
             hide_index=True,
         )
 
+      
+
     except Exception as e:
         st.error(f"Erreur Airflow DB: {e}")
+
+st.divider()
+st.subheader("Airflow – Performance (dernier run)")
+dag_perf = st.selectbox("DAG à analyser", [dag_ingestion, dag_convert, dag_load_snowflake, dag_dbt])
+state_last, run_last = airflow_last_state(runs, dag_perf)
+if run_last not in ("—", "", None):
+    tasks_df = airflow_task_durations(conn, dag_perf, run_last)
+    if tasks_df.empty:
+        st.info("Aucune task_instance trouvée pour ce run.")
+    else:
+        total = tasks_df["duration_s"].sum(skipna=True)
+        slowest = tasks_df.sort_values("duration_s", ascending=False).head(1)
+
+        p1, p2 = st.columns(2)
+        p1.metric("Run total (s)", f"{total:.1f}")
+        if not slowest.empty and pd.notna(slowest.iloc[0]["duration_s"]):
+            p2.metric("Task la plus lente", f'{slowest.iloc[0]["task_id"]} ({slowest.iloc[0]["duration_s"]:.1f}s)')
+
+        st.dataframe(
+            tasks_df[["task_id", "state", "duration_s"]].sort_values("duration_s", ascending=False),
+            use_container_width=True,
+            hide_index=True,
+        )
+else:
+    st.info("Pas de run_id disponible pour ce DAG.")
+
+
+st.divider()
+st.subheader("Warehouse & dbt – Observations")
+
+
+project_root = "/opt/airflow/project"
+dbt_root = f"{project_root}/transformation/transforme_with_dbt/dbt"
+
+source_yml = f"{dbt_root}/models/source/source.yml"
+bronze_dir = f"{dbt_root}/models/bronze"
+silver_dir = f"{dbt_root}/models/silver"
+dbt_log = f"{dbt_root}/logs/dbt.log"  # si présent
+
+    # KPIs "artifacts exist"
+c1, c2, c3 = st.columns(3)
+c1.metric("source.yml exists", "yes" if Path(source_yml).exists() else "no")
+c2.metric("bronze models", int(len(list(Path(bronze_dir).glob('*.sql')))) if Path(bronze_dir).exists() else 0)
+c3.metric("silver models", int(len(list(Path(silver_dir).glob('*.sql')))) if Path(silver_dir).exists() else 0)
+
+st.caption("Derniers fichiers générés (Bronze / Silver):")
+
+bdf = list_files_info(bronze_dir, "*.sql")
+sdf = list_files_info(silver_dir, "*.sql")
+
+left, right = st.columns(2)
+with left:
+    st.write("**Bronze**")
+    if bdf.empty:
+        st.info("No bronze .sql files found.")
+    else:
+        st.dataframe(bdf.head(30), use_container_width=True, hide_index=True)
+
+with right:
+    st.write("**Silver**")
+    if sdf.empty:
+        st.info("No silver .sql files found.")
+    else:
+        st.dataframe(sdf.head(30), use_container_width=True, hide_index=True)
+
+st.caption("Extrait dbt.log (si disponible):")
+st.code(tail_text_file(dbt_log, n=120), language="text")
 
 st.divider()
 st.caption(
     "Ce dashboard lit (1) S3 pour la volumétrie et les timestamps (RAW/Parquet) et "
     "(2) la base Postgres d’Airflow pour l’historique d’exécution des DAGs."
 )
+
