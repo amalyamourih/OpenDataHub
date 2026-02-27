@@ -43,7 +43,7 @@ Goal: ingest heterogeneous French open data from **data.gouv.fr**, store **raw f
 │   ├── transformat_files_to_parquet/
 │   │   ├── convert_to_parquet/           # Converters by category/extension
 │   │   └── parquet/                      # Parquet writing utilities
-│   ├── transforme_with_duckdb/           # DuckDB-based conversions (optional)
+│   ├── transforme_with_duckdb/           # DuckDB-based conversions (optional and made on local test only) 
 │   └── transforme_with_dbt/dbt/          # dbt project (models/macros/profiles)
 │
 ├── utils/                                # Config + formats dictionary + naming helpers
@@ -60,7 +60,7 @@ Goal: ingest heterogeneous French open data from **data.gouv.fr**, store **raw f
 │   └── dashboard_streamlit.py
 │
 └── warehouse/
-    └── warehouse.duckdb                  # Local DuckDB file (generated/updated)
+    └── warehouse.duckdb                  # (optionel) Local DuckDB file (generated/updated)
 
 ```
 ---
@@ -68,13 +68,13 @@ Goal: ingest heterogeneous French open data from **data.gouv.fr**, store **raw f
 ## Data Lake Layout on S3
 
 The pipeline uses two prefixes:
-- `S3_INPUT_PREFIX` for raw files
+- `S3_INPUT_PREFIX` for raw files (it was optional idea because every dataset is dedicated to their own folder)
 - `S3_OUTPUT_PREFIX` for parquet files
 
 Recommended layout:
 
 ```bash
-s3://<bucket>/<S3_INPUT_PREFIX>/
+s3://<bucket>/
 ├── tabular/
 ├── geospatial_vector/
 ├── geospatial_raster/

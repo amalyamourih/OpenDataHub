@@ -69,7 +69,7 @@ def download_resource(ti, **context):
 
 def fetch_metadata(ti):
     log.info("Début fetch_metadata")
-    limit = 3
+    limit = 3  # à ajuster selon le nombre de datasets que tu veux   !!!!!!!!!!!!!!!!!!!!!!
     slugs = list_last_updated_dataset_slugs(limit=limit)
     if not slugs:
         raise ValueError(f"Impossible de récupérer les {limit} derniers datasets mis à jour (liste vide).")
